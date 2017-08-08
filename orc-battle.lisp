@@ -1,5 +1,5 @@
 (load "item.lisp" :external-format :utf-8)
-(setf *random-state* (make-random-state t))
+
 (defparameter *player-health* nil)
 (defparameter *player-agility* nil)
 (defparameter *player-strength* nil)
@@ -441,6 +441,7 @@
 
 
 (defun main ()
+  (setf *random-state* (make-random-state t))
   (let* ((p (make-player))
 	 (map (maze p)))
     (init-data)
