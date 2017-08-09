@@ -38,7 +38,9 @@
 	*monster-level* 0
 	*boss?* nil
 	*end* nil
-	*battle?* nil))
+	*battle?* nil
+  *boss-builders* nil)
+  (push-boss))
 ;;バトル開始
 (defun orc-battle (p)
   (format t "~%敵が現れた！！~%")
