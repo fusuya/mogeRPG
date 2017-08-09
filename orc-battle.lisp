@@ -39,7 +39,7 @@
 	*boss?* nil
 	*end* nil
 	*battle?* nil
-  *boss-builders* nil)
+	*boss-builders* nil)
   (push-boss))
 ;;バトル開始
 (defun orc-battle (p)
@@ -58,8 +58,8 @@
 	(progn (format t "     「レベルアップ！！」~%")
 	       (incf (player-level p))
 	       (incf (player-maxhp p) 3)
-	       (incf (player-maxagi p) 3)
-	       (incf (player-maxstr p) 3)
+	       (incf (player-maxagi p) 1)
+	       (incf (player-maxstr p) 1)
 	       (setf (player-hp p) (player-maxhp p)
 		     (player-agi p) (player-maxagi p)
 		     (player-str p) (player-maxstr p)
@@ -82,8 +82,8 @@
 	(progn (format t "「レベルアップ！！」~%")
 	       (incf (player-level p))
 	       (incf (player-maxhp p) 3)
-	       (incf (player-maxagi p) 3)
-	       (incf (player-maxstr p) 3)
+	       (incf (player-maxagi p) 1)
+	       (incf (player-maxstr p) 1)
 	       (setf (player-hp p) (player-maxhp p)
 		     (player-agi p) (player-maxagi p)
 		     (player-str p) (player-maxstr p)
@@ -195,7 +195,7 @@
 		     (funcall (nth (random (1- (length *boss-builders*)))
 				   *boss-builders*))))
 	       (make-array 10)))
-    (setf (monster-health (aref *monsters* 0)) 100
+    (setf (monster-health (aref *monsters* 0)) 200
 	  (player-monster-num p) 10)))
 
 (defun monster-dead (m)
@@ -230,13 +230,13 @@
   (format t "「~aに ~dのダメージを与えた！」~%" (type-of m) x)
   (if (monster-dead m)
       (case (type-of m)
-	(orc (incf (player-exp p) 3)
+	(orc (incf (player-exp p) 2)
 	 (princ "「オークを倒しました！」 "))
-	(hydra (incf (player-exp p) 5)
+	(hydra (incf (player-exp p) 4)
 	 (princ "「ヒドラを倒しました！」 "))
-	(slime-mold (incf (player-exp p) 4)
+	(slime-mold (incf (player-exp p) 3)
 	 (princ "「スライムを倒しました！」 "))
-	(brigand (incf (player-exp p) 6)
+	(brigand (incf (player-exp p) 5)
 	 (princ "「ブリガンドを倒しました！」 ")))))
       #|
       (progn (princ "「")
@@ -257,12 +257,19 @@
 (defmethod monster-show ((m boss))
   (princ "ボス：もげぞう"))
 (defmethod monster-attack ((m boss) (p player))
-  (let ((x (randval (boss-boss-atk m))))
-    (princ "「もげぞうの攻撃。 ")
-    (princ x)
-    (princ " のダメージをくらった。」")
-    (fresh-line)
-    (decf (player-hp p) x)))
+  (let ((x (randval (+ (player-level p) (boss-boss-atk m)))))
+    (case (random 3)
+      (0
+       (format t "「もげぞうの攻撃。~dのダメージをくらった。」~%" x)
+       (decf (player-hp p) x))
+      (1
+       (format t "「もげぞうの不思議な踊り。素早さが~d下がった。」~%" x)
+       (decf (player-agi p) x))
+      (2
+       (format t "「もげぞうのなんかすごい攻撃！すべてのステータスが~d下がった！」~%" x)
+       (decf (player-hp p) x)
+       (decf (player-agi p) x)
+       (decf (player-str p) x)))))
 
 (defun push-boss ()
   (push #'make-boss *boss-builders*)
@@ -329,16 +336,15 @@
 
 (defmethod monster-attack ((m slime-mold) (p player))
   (let ((x (randval (slime-mold-sliminess m))))
-    (princ "「スライムは足に絡みついてきてあなたの素早さを ")
-    (princ x)
-    (princ " 低下させた！」 ")
-    (fresh-line)
-    (decf (player-agi p) x)
-    (if (zerop (random 2))
-	(progn
-	  (princ "「スライムが何か液体を吐きかけてきて 1 ダメージくらった」")
-	  (fresh-line)
-	  (decf (player-hp p))))))
+    (cond
+      ((> (player-agi p) 0)
+       (format t "「スライムは足に絡みついてきてあなたの素早さが ~d 下がった！~%" x)
+       (decf (player-agi p) x)
+       (if (< (player-agi p) 0)
+	 (setf (player-agi p) 0)))
+      (t
+	(format t "「スライムが何か液体を吐きかけてきて ~d ダメージくらった」~%" x)
+	(decf (player-hp p) x)))))
 
 (defstruct (brigand (:include monster)))
 (push #'make-brigand *monster-builders*)
@@ -453,18 +459,21 @@
     (setf *battle?* nil)
     ;;(setf (aref map (player-pos p)) 1)
     (main-game-loop map p)))
-
+;;壁破壊
 (defun kabe-break (map p y x)
   (format t "「ハンマーで壁を壊しますか？」[y or n]:~%")
   (case (read)
     (y
-     (setf (aref map (+ (player-posy p) y) (+ (player-posx p) x)) 0)
+      (if (= (random 2) 0)
+	(setf (aref map (+ (player-posy p) y) (+ (player-posx p) x)) 0)
+	(setf (aref map (+ (player-posy p) y) (+ (player-posx p) x)) 3))
      (decf (player-hammer p))
      (format t "「壁を壊しました。」~%"))))
 
 
 ;;見つけた武器を装備するか
-(defun equip? (p item)
+(defun equip? (p item-a)
+  (let ((item (assoc item-a *buki* :test #'equal)))
   (format t "「~aを見つけた」~%" (first item))
   (format t "現在の装備品：~a 攻撃力:~d HP:~d 素早さ:~d~%"
 	  (first (player-buki p)) (second (player-buki p)) (third (player-buki p)) (fourth (player-buki p)))
@@ -485,7 +494,7 @@
     (n
      (format t "「~aを見なかったことにした。」~%" (first item)))
     (otherwise
-     (equip? p item))))
+     (equip? p item)))))
 
 (defun hummer-get (p)
   (format t "「ハンマーを見つけた。」~%")
