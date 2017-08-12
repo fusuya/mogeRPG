@@ -382,7 +382,7 @@
 ;;マップ表示
 (defun show-map (map p)
   (format t "地下~d階~%" (player-map p))
-  (format t "現在のステータス HP ~d, 素早さ ~d, 力, ~d exp ~d~%" (player-hp p) (player-agi p)
+  (format t "現在のステータス HP ~d, 素早さ ~d, 力 ~d, exp ~d~%" (player-hp p) (player-agi p)
 	  (player-str p) (player-exp p))
   (format t "現在の武器:~a~%" (first (player-buki p)))
   (format t "持ち物:回復薬 ~d個 ハンマー~d個~%" (player-heal p) (player-hammer p))
@@ -402,7 +402,7 @@
 ;;マップ表示 視界制限ver
 (defun show-fog-map (map p)
   (format t "地下~d階~%" (player-map p))
-  (format t "現在のステータス HP ~d, 素早さ ~d, 力, ~d exp ~d~%" (player-hp p) (player-agi p)
+  (format t "現在のステータス HP ~d, 素早さ ~d, 力 ~d, exp ~d~%" (player-hp p) (player-agi p)
 	  (player-str p) (player-exp p))
   (format t "現在の武器:~a~%" (first (player-buki p)))
   (format t "持ち物:回復薬 ~d個 ハンマー~d個~%" (player-heal p) (player-hammer p))
