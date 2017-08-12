@@ -2,7 +2,10 @@
 text game
 
 ・readline.lispはhttp://keens.github.io/blog/2016/02/14/readlinenotsukurikata/  
-を使わせてもらってます。
+を使わせてもらってます。  
+
+・sbcl持ってる人はload.lispかload-linux.lispをloadするとゲーム始まると思います。  
+
 
 ・攻撃の種類  
 1:突く  
