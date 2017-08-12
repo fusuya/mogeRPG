@@ -1,6 +1,9 @@
 ﻿# mogeRPG
 text game
 
+・readline.lispはhttp://keens.github.io/blog/2016/02/14/readlinenotsukurikata/  
+を使わせてもらってます。
+
 ・攻撃の種類  
 1:突く  
 敵単体に大ダメージ（ランダム）   

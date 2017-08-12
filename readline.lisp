@@ -1,0 +1,18 @@
+(require 'sb-posix)
+(defmacro with-readline-mode (&body body)
+  (let ((stdin       (gensym "stdin"))
+        (old-termios (gensym "old-termios"))
+        (new-termios (gensym "new-termios"))
+        (lflag       (gensym "lflag")))
+    `(let* ((,stdin 0)
+            (,old-termios (sb-posix:tcgetattr ,stdin))
+            (,new-termios (sb-posix:tcgetattr ,stdin))
+            (,lflag (sb-posix:termios-lflag ,new-termios)))
+       (unwind-protect
+            (progn
+              (setf ,lflag (logand ,lflag (lognot sb-posix:icanon)))
+              (setf ,lflag (logand ,lflag (lognot sb-posix:echo)))
+              (setf (sb-posix:termios-lflag ,new-termios) ,lflag)
+              (sb-posix:tcsetattr ,stdin sb-posix:tcsadrain ,new-termios)
+              ,@body)
+        (sb-posix:tcsetattr ,stdin sb-posix:tcsadrain ,old-termios)))))
