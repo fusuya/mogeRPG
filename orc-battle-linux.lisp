@@ -1,4 +1,4 @@
-(load "/home/aria/game/orc-battle/item.lisp" :external-format :utf-8)
+(load "item.lisp" :external-format :utf-8)
 
 (defparameter *player-health* nil)
 (defparameter *player-agility* nil)
