@@ -25,7 +25,7 @@
   (maxstr 30)
   (posy 0)
   (posx 0)
-  (map 49) ;;マップ深度
+  (map 1) ;;マップ深度
   (heal 2) ;;持ってる薬の数
   (hammer 5) ;;持ってるハンマーの数
   (level 1)
@@ -38,9 +38,8 @@
 	*monster-level* 0
 	*boss?* 0
 	*end* 0
-	*battle?* nil
-	*boss-builders* nil)
-  (push-boss))
+	*battle?* nil))
+
 ;;バトル開始
 (defun orc-battle (p)
   (format t "~%敵が現れた！！~%")
@@ -116,7 +115,7 @@
 	(show-monsters)
 	(show-player p)
         (player-attack p)))
-    (cond 
+    (cond
       ((null (monsters-dead))
        (format t "~%~%-------------敵のターン-------------~%")
        (map 'list
@@ -136,7 +135,7 @@
 
 (defun show-player (p)
   (format t "~%~%あなたのステータス:HP ~d, 素早さ ~d, 力 ~d,~%"
-          (player-hp p) (player-agi p) (player-str p)) 
+          (player-hp p) (player-agi p) (player-str p))
   (format t "持ち物:回復薬 ~d個~%" (player-heal p)))
 
 (defun player-attack (p)
@@ -205,9 +204,9 @@
 	       (lambda (x)
 		 (if (= hoge 0)
 		     (progn (incf hoge)
-			    (funcall (nth 4 *boss-builders*)))
-		     (funcall (nth (random (1- (length *boss-builders*)))
-				   *boss-builders*))))
+			    (make-boss))
+		     (funcall (nth (random (1- (length *monster-builders*)))
+				   *monster-builders*))))
 	       (make-array 10)))
     (setf (monster-health (aref *monsters* 0)) 200
 	  (player-monster-num p) 10)))
@@ -222,7 +221,7 @@
 		     (funcall (nth (random (length *monster-builders*))
 				   *monster-builders*))))
 	       (make-array 10)))
-    (setf (monster-health (aref *monsters* 0)) 200
+    (setf (monster-health (aref *monsters* 0)) 120
 	  (player-monster-num p) 10)))
 
 
@@ -257,6 +256,9 @@
   (format t "「~aに ~dのダメージを与えた！」~%" (type-of m) x)
   (if (monster-dead m)
       (case (type-of m)
+        (ha2ne2
+          (incf (player-exp p) 99)
+          (format t "「ハツネツエリアを倒した！」~%"))
 	(orc (incf (player-exp p) 2)
 	 (princ "「オークを倒しました！」 "))
 	(hydra (incf (player-exp p) 4)
@@ -300,7 +302,7 @@
 (defmethod monster-show ((m boss))
   (princ "ボス：もげぞう"))
 (defmethod monster-attack ((m boss) (p player))
-  (let ((x (randval (+ (player-level p) (boss-boss-atk m)))))
+  (let ((x (+ 3 (randval (+ (player-level p) (boss-boss-atk m))))))
     (case (random 3)
       (0
        (format t "「もげぞうの攻撃。~dのダメージをくらった。」~%" x)
@@ -427,8 +429,8 @@
 ;;マップ表示
 (defun show-map (map p)
   (format t "地下~d階~%" (player-map p))
-  (format t "現在のステータス HP ~d, 素早さ ~d, 力, ~d exp ~d~%" (player-hp p) (player-agi p)
-	  (player-str p) (player-exp p))
+  (format t "現在のステータス Lv ~d, HP ~d, 素早さ ~d, 力 ~d, exp ~d~%" (player-level p) (player-hp p)
+          (player-agi p) (player-str p) (player-exp p))
   (format t "現在の武器:~a~%" (first (player-buki p)))
   (format t "持ち物:回復薬 ~d個 ハンマー~d個~%" (player-heal p) (player-hammer p))
   (loop for i from 0 below *tate* do
@@ -446,6 +448,7 @@
             (6 (format t " ハ:中ボス~%"))
 	    (otherwise (fresh-line))))))
   (format t "どちらに移動しますか？[w]上 [s]下 [d]右 [a]左 [q]薬を使う [z]終わる: ~%"))
+#|
 ;;マップ表示 視界制限ver
 (defun show-fog-map (map p)
   (format t "地下~d階~%" (player-map p))
@@ -473,6 +476,7 @@
 	    (3 (format t " 薬:回復薬~%"))
 	    (4 (format t " 暗:見えてない場所~%"))
 	    (otherwise (fresh-line)))))))
+|#
 ;;マップ設定
 (defun set-map (map moto)
   (loop for i from 0 below *tate* do
@@ -508,10 +512,6 @@
 	 (map (maze p)))
     (init-data)
     (init-monsters p)
-    ;;(init-player)
-    ;;(setf *player-pos* 85)
-    (setf *battle?* nil)
-    ;;(setf (aref map (player-pos p)) 1)
     (main-game-loop map p)))
 ;;壁破壊
 (defun kabe-break (map p y x)
@@ -584,9 +584,9 @@
        (equip? p (aref item-l 9))))))
 ;;アイテムゲット
 (defun item-get (p)
-  (let ((x (random 3)))
+  (let ((x (random 4)))
     (case x
-      ((0 2) ;;武器ゲット
+      ((0 2 3) ;;武器ゲット
        (cond
 	 ((<= 1 (player-map p) 10)
 	  (buki-get p *buki1-10*))
