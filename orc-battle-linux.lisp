@@ -52,9 +52,8 @@
     (format t "Game Over.~%")
     (format t "あなたは地下~d階で力尽きた。~%" (player-map p))
     (format t "もう一度挑戦しますか？(yes=1 or no=2)~%")
-    (with-readline-mode
-    (case (read-char)
-          (#\1 (main)))))
+    (case (read)
+          (1 (main))))
   (when (monsters-dead)
     (if (>= (player-exp p) 100)
 	(progn (format t "     「レベルアップ！！」~%")
@@ -77,9 +76,8 @@
     (format t "Game Over.~%")
     (format t "ボスに倒された！~%")
     (format t "もう一度挑戦しますか？(yes=1 or no=2)~%")
-    (with-readline-mode
-    (case (read-char)
-          (#\1 (main)))))
+    (case (read)
+          (1 (main))))
   (when (monsters-dead)
     (format t "「大勝利！」~%~%")
     (setf *end* 1)))
@@ -93,18 +91,15 @@
     (format t "Game Over.~%")
     (format t "ハツネツエリアに倒された！~%")
     (format t "もう一度最初から挑戦しますか？(yes=1 or no=2)~%")
-    (with-readline-mode
-    (case (read-char)
-          (#\1 (main)))))
+    (case (read)
+          (1 (main))))
   (when (monsters-dead)
     (setf *boss?* 0)
     (format t "「大勝利！」~%")
     (format t "「ハツネツの剣を拾った！装備しますか？」(yes=1 or no=2)~%")
-    (with-readline-mode
-      (case (read-char)
-        (#\1 (equip-buki (assoc "ハツネツの剣" *buki* :test #'equal) p))
-        (otherwise (format t "ハツネツの剣を捨てた。~%"))))
-    ))
+      (case (read)
+        (1 (equip-buki (assoc "ハツネツの剣" *buki* :test #'equal) p))
+        (otherwise (format t "ハツネツの剣を捨てた。~%")))))
 
 ;;バトル時、プレイヤーが死ぬかモンスターが全滅するまでループ
 (defun game-loop (p)
@@ -115,7 +110,7 @@
 	(show-monsters)
 	(show-player p)
         (player-attack p)))
-    (cond
+    (cond 
       ((null (monsters-dead))
        (format t "~%~%-------------敵のターン-------------~%")
        (map 'list
@@ -135,18 +130,17 @@
 
 (defun show-player (p)
   (format t "~%~%あなたのステータス:HP ~d, 素早さ ~d, 力 ~d,~%"
-          (player-hp p) (player-agi p) (player-str p))
+          (player-hp p) (player-agi p) (player-str p)) 
   (format t "持ち物:回復薬 ~d個~%" (player-heal p)))
 
 (defun player-attack (p)
   (fresh-line)
   ;;(show-player p)
   (format t "攻撃方法: [1]突く [2]ダブルスウィング [3]なぎ払う [q]回復薬を使う:~%")
-  (with-readline-mode
-  (case (read-char)
-    (#\1 (monster-hit p (pick-monster p)
+  (case (read)
+    (1 (monster-hit p (pick-monster p)
 		    (+ 2 (randval (ash (player-str p) -1)))))
-    (#\2 (let ((x (randval (truncate (/ (player-str p) 6)))))
+    (2 (let ((x (randval (truncate (/ (player-str p) 6)))))
 	 (princ "ダブルスウィングのダメージは ")
 	 (princ x)
 	 (fresh-line)
@@ -154,13 +148,13 @@
 	 (show-monsters)
 	 (unless (monsters-dead)
 	   (monster-hit p (pick-monster p) x))))
-    (#\3 (dotimes (x (1+ (randval (truncate (/ (player-str p) 3)))))
+    (3 (dotimes (x (1+ (randval (truncate (/ (player-str p) 3)))))
 	 (unless (monsters-dead)
 	   (monster-hit p (random-monster) 1))))
-    (#\q (use-heal p))
+    (q (use-heal p))
     (otherwise
      (format t "1,2,3の中から選んでください！~%")
-     (player-attack p)))))
+     (player-attack p))))
 
 (defun randval (n)
   (1+ (random (max 1 n))))
@@ -176,8 +170,7 @@
   (fresh-line)
   (princ "攻撃したいモンスター番号を選択 #:")
   (fresh-line)
-  (with-readline-mode
-  (let ((x (digit-char-p (read-char))))
+  (let ((x (read)))
     (if (not (and (integerp x) (>= x 1) (<= x (player-monster-num p))))
 	(progn (princ "有効なモンスター番号ではありません。")
 	       (pick-monster p))
@@ -185,7 +178,7 @@
 	  (if (monster-dead m)
 	      (progn (princ "そのモンスターはすでに死んでます。")
 		     (pick-monster p))
-	      m))))))
+	      m)))))
 
 (defun init-monsters (p)
   (setf *monsters*
@@ -315,7 +308,7 @@
        (decf (player-hp p) x)
        (decf (player-agi p) x)
        (decf (player-str p) x)))))
-
+#|
 (defun push-boss ()
   (push #'make-boss *boss-builders*)
   (push #'make-orc *boss-builders*)
@@ -323,7 +316,7 @@
   (push #'make-slime-mold *boss-builders*)
   (push #'make-brigand *boss-builders*)
   )
-
+|#
 (defstruct (orc (:include monster)) (club-level (randval (+ 8 *monster-level*))))
 
 (push #'make-orc *monster-builders*)
@@ -498,12 +491,10 @@
       ((= *end* 1)
        (format t "~%「あなたは見事もげぞうの迷宮をクリアした！」~%
                   もう一度挑戦しますか？(yes=1 or no=2)~%")
-       (with-readline-mode
-       (case (read-char)
-         (#\1 (main)))))
+       (case (read)
+         (1 (main))))
       ((= *end* 0)
-       (main-game-loop map p))
-      )))
+       (main-game-loop map p)))))
 
 
 (defun main ()
@@ -516,14 +507,13 @@
 ;;壁破壊
 (defun kabe-break (map p y x)
   (format t "「ハンマーで壁を壊しますか？」[yes=1 or no=2]:~%")
-  (with-readline-mode
-  (case (read-char)
-    (#\1
+  (case (read)
+    (1
       (if (= (random 2) 0)
 	(setf (aref map (+ (player-posy p) y) (+ (player-posx p) x)) 0)
 	(setf (aref map (+ (player-posy p) y) (+ (player-posx p) x)) 3))
      (decf (player-hammer p))
-     (format t "「壁を壊しました。」~%")))))
+     (format t "「壁を壊しました。」~%"))))
 
 (defun equip-buki (item p)
   (incf (player-hp p)     (- (third item) (third (player-buki p))))
@@ -545,15 +535,14 @@
   (format t "発見した装備：~a 攻撃力:~d HP:~d 素早さ:~d~%"
 	  (first item) (second item) (third item) (fourth item))
   (format t "「装備しますか？」(yes=1 or no=2)~%")
-  (with-readline-mode
-  (case (read-char)
-    (#\1
+  (case (read)
+    (1
      (format t "「~aを装備した。」~%" (first item))
      (equip-buki item p))
-    (#\2
+    (2
      (format t "「~aを見なかったことにした。」~%" (first item)))
     (otherwise
-     (equip? p item-a))))))
+     (equip? p item-a)))))
 
 (defun hummer-get (p)
   (format t "「ハンマーを見つけた。」~%")
@@ -700,16 +689,16 @@
     ;;(show-fog-map map p)
     (show-map map p)
     ;;(format t "~%どちらに移動しますか？[u]上 [d]下 [r]右 [l]左 [q]薬を使う: ")
-    (with-readline-mode
-    (case (read-char)
-      (#\w (update-map map p -1 0))
-      (#\s (update-map map p 1 0))
-      (#\d (update-map map p 0 1))
-      (#\a (update-map map p 0 -1))
-      (#\q (use-heal p))
-      (#\z (setf *end* 2))
+    ;;(with-readline-mode
+    (case (read)
+      (w (update-map map p -1 0))
+      (s (update-map map p 1 0))
+      (d (update-map map p 0 1))
+      (a (update-map map p 0 -1))
+      (q (use-heal p))
+      (z (setf *end* 2))
       ;;(mogezouisgod (urawaza p))
       (otherwise
-       (format t "w,a,s,d,q,zの中から選んでください！~%"))))
+       (format t "w,a,s,d,q,zの中から選んでください！~%")))
 
     (map-move map p)))

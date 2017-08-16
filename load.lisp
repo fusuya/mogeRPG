@@ -1,4 +1,4 @@
-(load "orc-battle.lisp" :external-format :utf-8)
+(load "orc-battle-linux.lisp" :external-format :utf-8)
 (load "maze-test.lisp" :external-format :utf-8)
 
 (main)
