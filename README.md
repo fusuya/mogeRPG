@@ -4,9 +4,12 @@ text game
 ・readline.lispはhttp://keens.github.io/blog/2016/02/14/readlinenotsukurikata/  
 を使わせてもらってます。  
 
-・sbcl持ってる人はload.lispかload-linux.lispをloadするとゲーム始まると思います。  
 
-
+・sbcl持ってる人はload.lispをloadするとゲーム始まると思います。  
+・Linuxの場合quicklisp必要  
+  
+・Linux版は移動キーに矢印キー使えます。←↑↓→  
+  
 ・攻撃の種類  
 1:突く  
 敵単体に大ダメージ（ランダム）   
@@ -14,6 +17,8 @@ text game
 敵に2回中ダメージ攻撃できる  
 3:薙ぎ払う  
 ランダムな敵にランダム回数（素早さ依存）、1ダメージ与える。 
+
+・敵指定はアルファベット
 
 ・ハンマー  
 ハンマーを持ってる状態で壁の方に移動すると壁を壊すかどうか選択肢が出る。   
