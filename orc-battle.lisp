@@ -72,6 +72,7 @@
   (boss-monsters p)
   ;;(init-player)
   (game-loop p)
+  (setf *battle?* nil)
   (when (player-dead p)
     (scr-format "Game Over.~%")
     (scr-format "ボスに倒された！~%")
@@ -87,6 +88,7 @@
   (ha2ne2-monsters p)
   ;;(init-player)
   (game-loop p)
+  (setf *battle?* nil)
   (when (player-dead p)
     (scr-format "Game Over.~%")
     (scr-format "ハツネツエリアに倒された！~%")
@@ -120,19 +122,15 @@
        (scr-format "~%")
        (game-loop p)))))
 
-(defun init-player ()
-  (setf *player-health* 30)
-  (setf *player-agility* 30)
-  (setf *player-strength* 30))
-
+;;プレイヤーの生死判定
 (defun player-dead (p)
   (<= (player-hp p) 0))
-
+;;プレイヤーのステータス表示(バトル時)
 (defun show-player (p)
   (scr-format "~%~%あなたのステータス:HP ~d, 素早さ ~d, 力 ~d,~%"
           (player-hp p) (player-agi p) (player-str p)) 
   (scr-format "持ち物:回復薬 ~d個~%" (player-heal p)))
-
+;;攻撃方法
 (defun player-attack (p)
   (scr-fresh-line)
   ;;(show-player p)
@@ -159,17 +157,17 @@
 (defun randval (n)
   (1+ (random (max 1 n))))
 
-
+;;ランダムでモンスターを選択
 (defun random-monster ()
   (let ((m (aref *monsters* (random (length *monsters*)))))
     (if (monster-dead m)
 	(random-monster)
 	m)))
-
+;;a→ 1 b→ 2 c→ 3 ...
 (defun ascii->number (x)
   (if (null (numberp x))
       (- (char-code (char (symbol-name x) 0)) 64)))
-
+;;モンスター選択
 (defun pick-monster (p)
   (scr-fresh-line)
   (scr-princ "攻撃したいモンスター番号を選択 #:")
@@ -183,17 +181,15 @@
 	      (progn (scr-princ "そのモンスターはすでに死んでます。")
 		     (pick-monster p))
 	      m)))))
-
+;;ランダムなモンスターグループを作る
 (defun init-monsters (p)
   (setf *monsters*
 	(map 'vector
 	     (lambda (x)
 	       (funcall (nth (random (length *monster-builders*))
 			     *monster-builders*)))
-	     (make-array (setf (player-monster-num p) (randval (+ *monster-num* (if (>= (player-level p) 7)
-										    6
-										    (player-level p)))))))))
-
+	     (make-array (setf (player-monster-num p) (randval (+ *monster-num* (floor (player-level p) 4))))))))
+;;配列の０番目にボス、あとはランダムなモンスター
 (defun boss-monsters (p)
   (let ((hoge 0))
     (setf *monsters*
@@ -207,6 +203,7 @@
 	       (make-array 10)))
     (setf (monster-health (aref *monsters* 0)) 200
 	  (player-monster-num p) 10)))
+;;
 (defun ha2ne2-monsters (p)
   (let ((hoge 0))
     (setf *monsters*
@@ -221,16 +218,16 @@
     (setf (monster-health (aref *monsters* 0)) 120
 	  (player-monster-num p) 10)))
 
-
+;;モンスターの生死判定
 (defun monster-dead (m)
   (<= (monster-health m) 0))
-
+;;モンスターグループが全滅したか判定
 (defun monsters-dead ()
   (every #'monster-dead *monsters*))
-
+;; a→ 97 b→ 98 c→ 99 ...
 (defun number->a (x)
   (code-char (+ x 96)))
-
+;;モンスター表示
 (defun show-monsters ()
   (scr-fresh-line)
   (scr-princ "敵:")
@@ -256,6 +253,7 @@
   (scr-format "「~aに ~dのダメージを与えた！」~%" (type-of m) x)
   (if (monster-dead m)
       (case (type-of m)
+        (boss (scr-format "もげぞうを倒した！~%"))
         (ha2ne2
           (incf (player-exp p) 99)
           (scr-format "「ハツネツエリアを倒した！」~%"))
@@ -315,15 +313,7 @@
        (decf (player-hp p) x)
        (decf (player-agi p) x)
        (decf (player-str p) x)))))
-#|
-(defun push-boss ()
-  (push #'make-boss *boss-builders*)
-  (push #'make-orc *boss-builders*)
-  (push #'make-hydra *boss-builders*)
-  (push #'make-slime-mold *boss-builders*)
-  (push #'make-brigand *boss-builders*)
-  )
-|#
+;;-------------------オーク------------------------------
 (defstruct (orc (:include monster)) (club-level (randval (+ 8 *monster-level*))))
 
 (push #'make-orc *monster-builders*)
@@ -343,6 +333,7 @@
 
 
 
+;;-------------------ヒドラ------------------------------
 (defstruct (hydra (:include monster)))
 (push #'make-hydra *monster-builders*)
 
@@ -371,6 +362,7 @@
     (decf (player-hp p) x)))
 
 
+;;-------------------スライム------------------------------
 (defstruct (slime-mold (:include monster)) (sliminess (randval (+ 5 *monster-level*))))
 (push #'make-slime-mold *monster-builders*)
 
@@ -391,6 +383,7 @@
 	(scr-format "「スライムが何か液体を吐きかけてきて ~d ダメージくらった」~%" x)
 	(decf (player-hp p) x)))))
 
+;;-------------------ブリガンド------------------------------
 (defstruct (brigand (:include monster)))
 (push #'make-brigand *monster-builders*)
 
@@ -411,7 +404,7 @@
 
 
 ;;---------------------------------------------------------------------------------------
-
+;;マップ移動
 
 
 (defun map-type (num)
@@ -523,6 +516,7 @@
      (decf (player-hammer p))
      (scr-format "「壁を壊しました。」~%"))))
 
+;;武器装備してステータス更新
 (defun equip-buki (item p)
   (incf (player-hp p)     (- (third item) (third (player-buki p))))
   (incf (player-maxhp p)  (- (third item) (third (player-buki p))))
@@ -614,7 +608,7 @@
   (setf (aref map (player-posy p) (player-posx p)) 0)
   (setf (player-posy p) (+ (player-posy p) y)
 	(player-posx p) (+ (player-posx p) x)))
-;;ラストマプ
+;;bossマップセット
 (defun set-bossmap (map p boss-map)
   (set-map map boss-map)
   (setf (player-posx p) 5
@@ -625,9 +619,9 @@
       (progn
         (scr-format "~%「もげぞーの剣が輝き出し、もげぞうの剣に進化した！」~%")
         (equip-buki (assoc "もげぞうの剣" *buki* :test #'equal) p))
-      (scr-format "「なにも起こらなかった。」~%")))
-  ;;(scr-format "enterを押してください。~%")
-  ;;(gets))
+      (scr-format "「なにも起こらなかった。」~%"))
+  (scr-format "enterを押してください。~%")
+  (read-command-char))
 ;;移動後のマップ更新
 (defun update-map (map p y x)
   (case (aref map (+ (player-posy p) y) (+ (player-posx p) x))
@@ -651,7 +645,7 @@
         (set-map map (maze p))))
      (incf (player-map p))
      (incf (player-hammer p))
-     (if (= (mod (player-map p) 5) 0)
+     (if (= (mod (player-map p) 10) 0)
 	 (incf *monster-level*)))
     (3 ;;宝箱
      (item-get p)
@@ -682,32 +676,6 @@
 	   (player-str p) (player-maxstr p)))
     (t
       (scr-format "~% 「回復薬を持っていません！」~%"))))
-;;裏ワザ
-(defun urawaza (p)
-  (scr-format "~%「神の力を授かった！」~%")
-  (setf (player-hp p)     999
-	(player-maxhp p)  999
-	(player-agi p)    999
-	(player-maxagi p) 999
-	(player-str p)    999
-	(player-maxstr p) 999))
-;;移動先選択
-(defun map-move (map p)
-  (unless (or *battle?* (= *end* 2))
-    ;;(show-fog-map map p)
-    (show-map map p)
-    ;;(scr-format "~%どちらに移動しますか？[u]上 [d]下 [r]右 [l]左 [q]薬を使う: ")
-    ;;(with-readline-mode
-    (case (read-command-char)
-      (w (update-map map p -1 0))
-      (s (update-map map p 1 0))
-      (d (update-map map p 0 1))
-      (a (update-map map p 0 -1))
-      (q (use-heal p))
-      (z (setf *end* 2))
-      ;;(mogezouisgod (urawaza p))
-      (otherwise
-       (scr-format "w,a,s,d,q,zの中から選んでください！~%")))
 
-    (map-move map p)))
+
 

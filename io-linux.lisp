@@ -52,3 +52,20 @@
   (cl-charms/low-level:scrollok cl-charms/low-level:*stdscr* 1)
   (cl-charms/low-level:keypad cl-charms/low-level:*stdscr* 1)
 (exit-hooks:add-exit-hook #'cl-charms/low-level:endwin))
+
+;;移動先選択
+(defun map-move (map p)
+  (unless (or *battle?* (= *end* 2))
+    ;;(show-fog-map map p)
+    (show-map map p)
+    (case (read-command-char)
+      (w (update-map map p -1 0))
+      (s (update-map map p 1 0))
+      (d (update-map map p 0 1))
+      (a (update-map map p 0 -1))
+      (q (use-heal p))
+      (z (setf *end* 2))
+      (otherwise
+       (scr-format "w,a,s,d,q,zの中から選んでください！~%")))
+
+    (map-move map p)))
