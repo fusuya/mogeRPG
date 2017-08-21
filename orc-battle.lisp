@@ -15,6 +15,7 @@
 (defparameter *end* 0)
 (defparameter *tate* 11) ;;マップサイズ
 (defparameter *yoko* 11)
+(defparameter *lv-exp* 100)
 
 (defstruct player
   (hp 30)
@@ -55,16 +56,17 @@
     (case (read-command-char)
           (1 (main))))
   (when (monsters-dead)
-    (if (>= (player-exp p) 100)
-	(progn (scr-format "     「レベルアップ！！」~%")
-	       (incf (player-level p))
-	       (incf (player-maxhp p) 3)
-	       (incf (player-maxagi p) 1)
-	       (incf (player-maxstr p) 1)
-	       (setf (player-hp p) (player-maxhp p)
-		     (player-agi p) (player-maxagi p)
-		     (player-str p) (player-maxstr p)
-		     (player-exp p) (- (player-exp p) 100))))
+    (unless (< (player-exp p) *lv-exp*)
+      (scr-format "     「レベルアップ！！」~%")
+      (incf (player-level p))
+      (incf (player-maxhp p) 3)
+      (incf (player-maxagi p) 1)
+      (incf (player-maxstr p) 1)
+      (setf (player-hp p) (player-maxhp p)
+	    (player-agi p) (player-maxagi p)
+	    (player-str p) (player-maxstr p)
+	    (player-exp p) (- (player-exp p) *lv-exp*))
+      (incf *lv-exp* 10))
     (scr-format "     「大勝利！」~%~%")))
 ;;ボスバトル
 (defun boss-battle (p)
@@ -112,7 +114,7 @@
 	(show-monsters)
 	(show-player p)
         (player-attack p)))
-    (cond 
+    (cond
       ((null (monsters-dead))
        (scr-format "~%~%-------------敵のターン-------------~%")
        (map 'list
@@ -128,7 +130,7 @@
 ;;プレイヤーのステータス表示(バトル時)
 (defun show-player (p)
   (scr-format "~%~%あなたのステータス:HP ~d, 素早さ ~d, 力 ~d,~%"
-          (player-hp p) (player-agi p) (player-str p)) 
+          (player-hp p) (player-agi p) (player-str p))
   (scr-format "持ち物:回復薬 ~d個~%" (player-heal p)))
 ;;攻撃方法
 (defun player-attack (p)
@@ -181,13 +183,20 @@
 	      (progn (scr-princ "そのモンスターはすでに死んでます。")
 		     (pick-monster p))
 	      m)))))
+
 ;;ランダムなモンスターグループを作る
 (defun init-monsters (p)
   (setf *monsters*
 	(map 'vector
 	     (lambda (x)
-	       (funcall (nth (random (length *monster-builders*))
-			     *monster-builders*)))
+	       ;;(funcall (nth (random (length *monster-builders*)) *monster-builders*)))
+               (let ((y (random 101)))
+                 (cond
+                   ((<= 0 y 25) (make-orc))
+                   ((<= 26 y 50) (make-hydra))
+                   ((<= 51 y 75) (make-slime-mold))
+                   ((<= 76 y 99) (make-brigand))
+                   (t (make-yote1 :health 3)))))
 	     (make-array (setf (player-monster-num p) (randval (+ *monster-num* (floor (player-level p) 4))))))))
 ;;配列の０番目にボス、あとはランダムなモンスター
 (defun boss-monsters (p)
@@ -197,12 +206,11 @@
 	       (lambda (x)
 		 (if (= hoge 0)
 		     (progn (incf hoge)
-			    (make-boss))
-		     (funcall (nth (random (1- (length *monster-builders*)))
+			    (make-boss :health 200))
+		     (funcall (nth (random (length *monster-builders*))
 				   *monster-builders*))))
 	       (make-array 10)))
-    (setf (monster-health (aref *monsters* 0)) 200
-	  (player-monster-num p) 10)))
+    (setf (player-monster-num p) 10)))
 ;;
 (defun ha2ne2-monsters (p)
   (let ((hoge 0))
@@ -211,12 +219,11 @@
 	       (lambda (x)
 		 (if (= hoge 0)
 		     (progn (incf hoge)
-			    (make-ha2ne2))
+			    (make-ha2ne2 :health 120))
 		     (funcall (nth (random (length *monster-builders*))
 				   *monster-builders*))))
 	       (make-array 10)))
-    (setf (monster-health (aref *monsters* 0)) 120
-	  (player-monster-num p) 10)))
+    (setf (player-monster-num p) 10)))
 
 ;;モンスターの生死判定
 (defun monster-dead (m)
@@ -230,6 +237,7 @@
 ;;モンスター表示
 (defun show-monsters ()
   (scr-fresh-line)
+  (scr-format "------------------------------------~%")
   (scr-princ "敵:")
   (let ((x 0))
     (map 'list
@@ -292,7 +300,7 @@
        (scr-format "「ネコPパンチ。力が~d下がった。」~%" x)
        (decf (player-str p) x))
       (2
-       (scr-format "「ハツネツが料理してご飯を食べている。ハツネツのHPが回復した！」~%")
+       (scr-format "「ハツネツが料理してご飯を食べている。ハツネツのHPが~d回復した！」~%" x)
        (incf (monster-health m) x)))))
 
 ;;ボス
@@ -301,11 +309,11 @@
   (scr-princ "ボス：もげぞう"))
 (defmethod monster-attack ((m boss) (p player))
   (let ((x (+ 3 (randval (+ (player-level p) (boss-boss-atk m))))))
-    (case (random 3)
-      (0
+    (case (random 5)
+      ((0 3)
        (scr-format "「もげぞうの攻撃。~dのダメージをくらった。」~%" x)
        (decf (player-hp p) x))
-      (1
+      ((1 4)
        (scr-format "「もげぞうの不思議な踊り。素早さが~d下がった。」~%" x)
        (decf (player-agi p) x))
       (2
@@ -313,6 +321,28 @@
        (decf (player-hp p) x)
        (decf (player-agi p) x)
        (decf (player-str p) x)))))
+;;-------------------メタル------------------------------
+(defstruct (yote1 (:include monster))
+  (atk    (randval (+ 10 *monster-level*))))
+;;(push #'make-yote1 *monster-builders*)
+
+(defmethod monster-show ((m yote1))
+  (scr-princ "レアモンスター メタルヨテイチ"))
+
+(defmethod monster-attack ((m yote1) (p player))
+  (let ((atk (randval (yote1-atk m))))
+    (case (random 2)
+      (0 (scr-format "「メタルヨテイチは何もしていない。」~%"))
+      (1 (scr-format "「メタルヨテイチが突然殴り掛かってきた。~dのダメージを受けた。」~%" atk)
+       (decf (player-hp p) atk)))))
+
+(defmethod monster-hit ((p player) (m yote1) x)
+  (decf (monster-health m) (floor x x))
+  (scr-format "「ヨテイチに 1のダメージを与えた！」~%")
+  (if (monster-dead m)
+      (progn (incf (player-exp p) 100)
+             (scr-format "「ヨテイチを倒した！。」~%"))))
+
 ;;-------------------オーク------------------------------
 (defstruct (orc (:include monster)) (club-level (randval (+ 8 *monster-level*))))
 
@@ -429,7 +459,6 @@
   (loop for i from 0 below *tate* do
     (loop for j from 0 below *yoko* do
       (scr-format (map-type (aref map i j)))
-
       (if (= j (- *yoko* 1))
 	  (case i
 	    (0 (scr-format " 主:プレイヤーの位置~%"))
@@ -510,7 +539,7 @@
   (scr-format "「ハンマーで壁を壊しますか？」[yes=1 or no=2]:~%")
   (case (read-command-char)
     (1
-      (if (= (random 2) 0)
+      (if (>= (random 10) 3)
 	(setf (aref map (+ (player-posy p) y) (+ (player-posx p) x)) 0)
 	(setf (aref map (+ (player-posy p) y) (+ (player-posx p) x)) 3))
      (decf (player-hammer p))
@@ -619,9 +648,9 @@
       (progn
         (scr-format "~%「もげぞーの剣が輝き出し、もげぞうの剣に進化した！」~%")
         (equip-buki (assoc "もげぞうの剣" *buki* :test #'equal) p))
-      (scr-format "「なにも起こらなかった。」~%"))
-  (scr-format "enterを押してください。~%")
-  (read-command-char))
+      (scr-format "「なにも起こらなかった。」~%")))
+  ;;(scr-format "enterを押してください。~%")
+  ;;(read-command-char))
 ;;移動後のマップ更新
 (defun update-map (map p y x)
   (case (aref map (+ (player-posy p) y) (+ (player-posx p) x))
@@ -644,7 +673,8 @@
        (t
         (set-map map (maze p))))
      (incf (player-map p))
-     (incf (player-hammer p))
+     (if (= (mod (player-map p) 2) 0)
+	 (incf (player-hammer p)))
      (if (= (mod (player-map p) 10) 0)
 	 (incf *monster-level*)))
     (3 ;;宝箱

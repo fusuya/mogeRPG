@@ -1,8 +1,8 @@
 (if (equal "Linux" (software-type))
-    (load "io-linux.lisp")
-    (load "io-win32.lisp"))
-(load "orc-battle.lisp")
-(load "maze-test.lisp")
+    (load "io-linux.lisp" :external-format :utf-8))
+    (load "io-win32.lisp" :external-format :utf-8))
+(load "orc-battle.lisp" :external-format :utf-8)
+(load "maze-test.lisp" :external-format :utf-8)
 
 (main)
 (sb-ext:exit)

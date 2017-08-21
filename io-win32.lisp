@@ -38,7 +38,7 @@
     (otherwise
      (when first-move?
        (update-map map p y x)))))
-
+#|
 ;;移動先選択
 (defun map-move (map p)
   (unless (or *battle?* (= *end* 2))
@@ -59,4 +59,25 @@
         ((equal cmd "mogezouisgod") (urawaza p))
         (t
          (format t "w,a,s,d,q,zの中から選んでください！~%"))))
+    (map-move map p)))
+|#
+;;移動先選択
+(defun map-move (map p)
+  (unless (or *battle?* (= *end* 2))
+    ;;(show-fog-map map p)
+    (show-map map p)
+    (case (read-command-char)
+      (w (update-map map p -1 0))
+      (s (update-map map p 1 0))
+      (d (update-map map p 0 1))
+      (a (update-map map p 0 -1))
+      (ww (update-map-dash map p -1 0))
+      (ss (update-map-dash map p 1 0))
+      (dd (update-map-dash map p 0 1))
+      (aa (update-map-dash map p 0 -1))
+      (q (use-heal p))
+      (z (setf *end* 2))
+      (otherwise
+       (scr-format "w,a,s,d,q,zの中から選んでください！~%")))
+
     (map-move map p)))
