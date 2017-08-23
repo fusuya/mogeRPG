@@ -56,17 +56,17 @@
     (case (read-command-char)
           (1 (main))))
   (when (monsters-dead)
-    (unless (< (player-exp p) *lv-exp*)
-      (scr-format "     「レベルアップ！！」~%")
-      (incf (player-level p))
-      (incf (player-maxhp p) 3)
-      (incf (player-maxagi p) 1)
-      (incf (player-maxstr p) 1)
-      (setf (player-hp p) (player-maxhp p)
-	    (player-agi p) (player-maxagi p)
-	    (player-str p) (player-maxstr p)
-	    (player-exp p) (- (player-exp p) *lv-exp*))
-      (incf *lv-exp* 10))
+    (loop while (>= (player-exp p) *lv-exp*)
+	  do (scr-format "     「レベルアップ！！」~%")
+	     (incf (player-level p))
+	     (incf (player-maxhp p) 3)
+	     (incf (player-maxagi p) 1)
+	     (incf (player-maxstr p) 1)
+	     (setf (player-hp p) (player-maxhp p)
+		   (player-agi p) (player-maxagi p)
+		   (player-str p) (player-maxstr p)
+		   (player-exp p) (- (player-exp p) *lv-exp*))
+	     (incf *lv-exp* 10))
     (scr-format "     「大勝利！」~%~%")))
 ;;ボスバトル
 (defun boss-battle (p)
@@ -114,9 +114,9 @@
 	(show-monsters)
 	(show-player p)
         (player-attack p)))
-    (cond
+    (cond 
       ((null (monsters-dead))
-       (scr-format "~%~%-------------敵のターン-------------~%")
+       (scr-format "~%~%-------------敵のターン----------------~%")
        (map 'list
             (lambda (m)
               (or (monster-dead m) (monster-attack m p)))
@@ -130,25 +130,33 @@
 ;;プレイヤーのステータス表示(バトル時)
 (defun show-player (p)
   (scr-format "~%~%あなたのステータス:HP ~d, 素早さ ~d, 力 ~d,~%"
-          (player-hp p) (player-agi p) (player-str p))
+          (player-hp p) (player-agi p) (player-str p)) 
   (scr-format "持ち物:回復薬 ~d個~%" (player-heal p)))
+;;
+(defun atack-p (p x)
+  (let ((m (pick-monster p)))
+    (scr-fresh-line)
+    (scr-format "-------------あなたの攻撃--------------~%")
+    (monster-hit p m x)))
 ;;攻撃方法
 (defun player-attack (p)
   (scr-fresh-line)
   ;;(show-player p)
   (scr-format "攻撃方法: [1]突く [2]ダブルスウィング [3]なぎ払う [q]回復薬を使う:~%")
   (case (read-command-char)
-    (1 (monster-hit p (pick-monster p)
-		    (+ 2 (randval (ash (player-str p) -1)))))
+    (1 (atack-p p (+ 2 (randval (ash (player-str p) -1)))))
     (2 (let ((x (randval (truncate (/ (player-str p) 6)))))
 	 (scr-princ "ダブルスウィングのダメージは ")
 	 (scr-princ x)
 	 (scr-fresh-line)
-	 (monster-hit p (pick-monster p) x)
+	 (atack-p p x)
 	 (show-monsters)
 	 (unless (monsters-dead)
-	   (monster-hit p (pick-monster p) x))))
-    (3 (dotimes (x (1+ (randval (truncate (/ (player-str p) 3)))))
+	   (atack-p p x))))
+    (3
+     (scr-fresh-line)
+     (scr-format "-------------あなたの攻撃--------------~%")
+     (dotimes (x (1+ (randval (truncate (/ (player-str p) 3)))))
 	 (unless (monsters-dead)
 	   (monster-hit p (random-monster) 1))))
     (q (use-heal p))
@@ -197,7 +205,8 @@
                    ((<= 51 y 75) (make-slime-mold))
                    ((<= 76 y 99) (make-brigand))
                    (t (make-yote1 :health 3)))))
-	     (make-array (setf (player-monster-num p) (randval (+ *monster-num* (floor (player-level p) 4))))))))
+	     (make-array (setf (player-monster-num p)
+			       (randval (+ *monster-num* (floor (player-level p) 4))))))))
 ;;配列の０番目にボス、あとはランダムなモンスター
 (defun boss-monsters (p)
   (let ((hoge 0))
@@ -237,7 +246,7 @@
 ;;モンスター表示
 (defun show-monsters ()
   (scr-fresh-line)
-  (scr-format "------------------------------------~%")
+  (scr-format "---------------------------------------~%")
   (scr-princ "敵:")
   (let ((x 0))
     (map 'list
@@ -265,22 +274,19 @@
         (ha2ne2
           (incf (player-exp p) 99)
           (scr-format "「ハツネツエリアを倒した！」~%"))
-	(orc (incf (player-exp p) 2)
+	(orc
+	 (incf (player-exp p) 2)
 	 (scr-princ "「オークを倒しました！」 "))
-	(hydra (incf (player-exp p) 4)
+	(hydra
+	 (incf (player-exp p) 4)
 	 (scr-princ "「ヒドラを倒しました！」 "))
-	(slime-mold (incf (player-exp p) 3)
+	(slime-mold
+	 (incf (player-exp p) 3)
 	 (scr-princ "「スライムを倒しました！」 "))
-	(brigand (incf (player-exp p) 5)
+	(brigand
+	 (incf (player-exp p) 5)
 	 (scr-princ "「ブリガンドを倒しました！」 ")))))
-      #|
-      (progn (scr-princ "「")
-	     (scr-princ (type-of m))
-	     (scr-princ "に ")
-	     (scr-princ x)
-	     (scr-princ " のダメージを与えました！」 ")
-	     (scr-fresh-line))))
-|#
+
 (defmethod monster-show (m)
   (scr-princ "凶暴な ")
   (scr-princ (type-of m)))
@@ -291,7 +297,7 @@
 (defmethod monster-show ((m ha2ne2))
   (scr-princ "ボス：ハツネツエリア"))
 (defmethod monster-attack ((m ha2ne2) (p player))
-  (let ((x (randval (+ (player-level p) (ha2ne2-h-atk m)))))
+  (let ((x (+ 3 (randval (+ (player-level p) (ha2ne2-h-atk m))))))
     (case (random 3)
       (0
        (scr-format "「ハツネツの攻撃。~dのダメージをくらった。」~%" x)
@@ -308,7 +314,7 @@
 (defmethod monster-show ((m boss))
   (scr-princ "ボス：もげぞう"))
 (defmethod monster-attack ((m boss) (p player))
-  (let ((x (+ 3 (randval (+ (player-level p) (boss-boss-atk m))))))
+  (let ((x (+ 5 (randval (+ (player-level p) (boss-boss-atk m))))))
     (case (random 5)
       ((0 3)
        (scr-format "「もげぞうの攻撃。~dのダメージをくらった。」~%" x)
@@ -693,7 +699,7 @@
            *boss?* 2))
     (otherwise
      (update-player-pos p x y map)
-     (if (= (randval 10) 1) ;;敵との遭遇確率
+     (if (= (randval 13) 1) ;;敵との遭遇確率
 	 (setf *battle?* t)))))
 ;;薬を使う
 (defun use-heal (p)
