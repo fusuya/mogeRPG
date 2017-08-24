@@ -4,6 +4,8 @@ text game
 ・readline.lispはhttp://keens.github.io/blog/2016/02/14/readlinenotsukurikata/  
 を使わせてもらってます。  
 
+・[win用exe](https://github.com/fusuya/mogeRPG/releases)  
+  
 
 ・sbcl持ってる人はload.lispをloadするとゲーム始まると思います。  
 ・Linuxの場合quicklisp必要  
@@ -15,7 +17,7 @@ text game
    s or ↓：↓に移動  
    d or →：→に移動  
   
-  ・windows
+  ・windows  
     w：上に移動  
     a：←に移動  
     s：↓に移動  
