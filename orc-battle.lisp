@@ -1,14 +1,10 @@
 (load "item.lisp" :external-format :utf-8)
 
-(defparameter *player-health* nil)
-(defparameter *player-agility* nil)
-(defparameter *player-strength* nil)
-(defparameter *player-pos* 85)
+
 (defparameter *battle?* nil)
 
 (defparameter *monsters* nil)
 (defparameter *monster-builders* nil)
-(defparameter *boss-builders* nil)
 (defparameter *monster-num* 6)
 (defparameter *monster-level* 0) ;;階数によるモンスターのレベル
 (defparameter *boss?* 0)
@@ -16,6 +12,8 @@
 (defparameter *tate* 11) ;;マップサイズ
 (defparameter *yoko* 11)
 (defparameter *lv-exp* 100)
+(defparameter *start-time* 0)
+(defparameter *ha2ne2* nil)
 
 (defstruct player
   (hp 30)
@@ -39,6 +37,8 @@
 	*monster-level* 0
 	*boss?* 0
 	*end* 0
+	*ha2ne2* nil
+	*start-time* (get-internal-real-time)
 	*battle?* nil))
 
 ;;バトル開始
@@ -98,7 +98,8 @@
     (case (read-command-char)
           (1 (main))))
   (when (monsters-dead)
-    (setf *boss?* 0)
+    (setf *boss?* 0
+	  *ha2ne2* t)
     (scr-format "「大勝利！」~%")
     (scr-format "「ハツネツの剣を拾った！装備しますか？」(yes=1 or no=2)~%")
       (case (read-command-char)
@@ -524,8 +525,16 @@
             (orc-battle p))))
     (cond
       ((= *end* 1)
-       (scr-format "~%「あなたは見事もげぞうの迷宮をクリアした！」~%
-                  もう一度挑戦しますか？(yes=1 or no=2)~%")
+       (let* ((ss (floor (- (get-internal-real-time) *start-time*) 1000))
+	      (h (floor ss 3600))
+	      (m (floor (mod ss 3600) 60))
+	      (s (mod ss 60)))
+	 (if *ha2ne2*
+	     (scr-format "~%「あなたは見事もげぞうの迷宮を完全攻略した！」~%")
+	     (scr-format "~%「もげぞうを倒したが、逃したハツネツエリアが新たな迷宮を作り出した・・・」~%
+「が、それはまた別のお話。」~%"))
+	 (scr-format "クリアタイムは~2,'0d:~2,'0d:~2,'0d でした！~%" h m s)
+	 (scr-format "もう一度挑戦しますか？(yes=1 or no=2)~%"))
        (case (read-command-char)
          (1 (main))))
       ((= *end* 0)
