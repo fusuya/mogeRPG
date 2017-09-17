@@ -48,6 +48,10 @@
 (defun read-command-line ()
   (read-from-string (gets)))
 
+;; () -> string
+(defun read-string ()
+  (gets))
+
 (defun init-charms ()
   (cl-charms/low-level:initscr)
   (cl-charms/low-level:scrollok cl-charms/low-level:*stdscr* 1)

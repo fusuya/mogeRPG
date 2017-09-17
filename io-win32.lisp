@@ -2,6 +2,9 @@
   (read))
 
 (defun read-command-line ()
+  (read-from-string (read-line)))
+
+(defun read-string ()
   (read-line))
 
 (defun init-charms ()
