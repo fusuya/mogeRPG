@@ -44,8 +44,13 @@
                          (add-char))))))
       (add-char))))
 
+;; () -> sexp
 (defun read-command-line ()
   (read-from-string (gets)))
+
+;; () -> string
+(defun read-string ()
+  (gets))
 
 (defun init-charms ()
   (cl-charms/low-level:initscr)
