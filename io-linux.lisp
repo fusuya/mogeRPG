@@ -57,7 +57,8 @@
   (cl-charms/low-level:initscr)
   (cl-charms/low-level:scrollok cl-charms/low-level:*stdscr* 1)
   (cl-charms/low-level:keypad cl-charms/low-level:*stdscr* 1)
-(exit-hooks:add-exit-hook #'cl-charms/low-level:endwin))
+  (cl-charms/low-level:raw)
+  (exit-hooks:add-exit-hook #'cl-charms/low-level:endwin))
 
 ;;移動先選択
 (defun map-move (map p)
