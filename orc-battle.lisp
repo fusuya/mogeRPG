@@ -278,9 +278,6 @@
 	(orc
 	 (incf (player-exp p) 2)
 	 (scr-princ "「オークを倒しました！」 "))
-	(hydra
-	 (incf (player-exp p) 4)
-	 (scr-princ "「ヒドラを倒しました！」 "))
 	(slime-mold
 	 (incf (player-exp p) 3)
 	 (scr-princ "「スライムを倒しました！」 "))
@@ -382,7 +379,9 @@
   (decf (monster-health m) x)
   (scr-format "「~aに ~dのダメージを与えた！」~%" (type-of m) x)
   (if (monster-dead m)
-      (scr-princ "「首がなくなったヒドラは倒れた。」")
+      (progn
+	 (incf (player-exp p) 4)
+         (scr-princ "「首がなくなったヒドラは倒れた。」"))
       (progn (scr-princ "「")
 	     (scr-princ x)
 	     (scr-princ " 本のヒドラの首を斬った！」 "))))
