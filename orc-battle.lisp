@@ -39,7 +39,8 @@
 	*end* 0
 	*ha2ne2* nil
 	*start-time* (get-internal-real-time)
-	*battle?* nil))
+	*battle?* nil
+	*lv-exp* 100))
 
 ;;バトル開始
 (defun orc-battle (p)
