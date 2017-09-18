@@ -1,5 +1,6 @@
 (ql:quickload :cl-charms)
 (ql:quickload :exit-hooks)
+(ql:quickload :flexi-streams)
 
 (defun scr-fresh-line ()
   (let ((x (cl-charms/low-level:getcurx cl-charms/low-level:*stdscr*)))
@@ -31,16 +32,16 @@
       nil)))
 
 (defun gets ()
-  (let ((buf (make-array 0 :element-type 'character :adjustable t :fill-pointer 0)))
+  (let ((buf (make-array 0 :adjustable t :fill-pointer 0)))
     (labels
         ((add-char ()
                    (let ((code (cl-charms/low-level:getch)))
                      (if (= code 10)
                          (progn
                            (cl-charms/low-level:scrl 1)
-                           buf)
+                           (flexi-streams:octets-to-string buf :external-format :utf-8))
                        (progn
-                         (vector-push-extend (code-char code) buf)
+                         (vector-push-extend code buf)
                          (add-char))))))
       (add-char))))
 
