@@ -1,5 +1,6 @@
 (ql:quickload :cl-charms)
 (ql:quickload :exit-hooks)
+(ql:quickload :flexi-streams)
 
 (defun scr-fresh-line ()
   (let ((x (cl-charms/low-level:getcurx cl-charms/low-level:*stdscr*)))
@@ -31,27 +32,33 @@
       nil)))
 
 (defun gets ()
-  (let ((buf (make-array 0 :element-type 'character :adjustable t :fill-pointer 0)))
+  (let ((buf (make-array 0 :adjustable t :fill-pointer 0)))
     (labels
         ((add-char ()
                    (let ((code (cl-charms/low-level:getch)))
                      (if (= code 10)
                          (progn
                            (cl-charms/low-level:scrl 1)
-                           buf)
+                           (flexi-streams:octets-to-string buf :external-format :utf-8))
                        (progn
-                         (vector-push-extend (code-char code) buf)
+                         (vector-push-extend code buf)
                          (add-char))))))
       (add-char))))
 
+;; () -> sexp
 (defun read-command-line ()
   (read-from-string (gets)))
+
+;; () -> string
+(defun read-string ()
+  (gets))
 
 (defun init-charms ()
   (cl-charms/low-level:initscr)
   (cl-charms/low-level:scrollok cl-charms/low-level:*stdscr* 1)
   (cl-charms/low-level:keypad cl-charms/low-level:*stdscr* 1)
-(exit-hooks:add-exit-hook #'cl-charms/low-level:endwin))
+  (cl-charms/low-level:raw)
+  (exit-hooks:add-exit-hook #'cl-charms/low-level:endwin))
 
 ;;移動先選択
 (defun map-move (map p)
@@ -64,8 +71,11 @@
       (d (update-map map p 0 1))
       (a (update-map map p 0 -1))
       (q (use-heal p))
-      (z (setf *end* 2))
+      (r (setf *end* 2))
       (otherwise
-       (scr-format "w,a,s,d,q,zの中から選んでください！~%")))
+       (scr-format "w,a,s,d,q,rの中から選んでください！~%")))
 
     (map-move map p)))
+
+(defun show-map-key ()
+  (scr-format "どちらに移動しますか？[↑ ]上 [↓ ]下 [→ ]右 [← ]左 [q]薬を使う [r]終わる: ~%"))

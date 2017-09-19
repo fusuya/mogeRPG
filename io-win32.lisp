@@ -2,6 +2,9 @@
   (read))
 
 (defun read-command-line ()
+  (read-from-string (read-line)))
+
+(defun read-string ()
   (read-line))
 
 (defun init-charms ()
@@ -81,3 +84,6 @@
        (scr-format "w,a,s,d,q,zの中から選んでください！~%")))
 
     (map-move map p)))
+
+(defun show-map-key ()
+  (scr-format "どちらに移動しますか？[w]上 [s]下 [d]右 [a]左 [q]薬を使う [r]終わる: ~%"))

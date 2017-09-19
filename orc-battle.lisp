@@ -1,16 +1,15 @@
 (load "item.lisp" :external-format :utf-8)
 
-
-(defparameter *battle?* nil)
-
+(defparameter *tate* 11) ;;マップサイズ
+(defparameter *yoko* 11)
 (defparameter *monsters* nil)
 (defparameter *monster-builders* nil)
+
+(defparameter *battle?* nil)
 (defparameter *monster-num* 6)
 (defparameter *monster-level* 0) ;;階数によるモンスターのレベル
 (defparameter *boss?* 0)
 (defparameter *end* 0)
-(defparameter *tate* 11) ;;マップサイズ
-(defparameter *yoko* 11)
 (defparameter *lv-exp* 100)
 (defparameter *start-time* 0)
 (defparameter *ha2ne2* nil)
@@ -33,14 +32,23 @@
   (monster-num 0))
 
 (defun init-data ()
-  (setf *monster-num* 6
+  (setf *battle?* nil
+	*monster-num* 6
 	*monster-level* 0
 	*boss?* 0
 	*end* 0
-	*ha2ne2* nil
+	*lv-exp* 100
 	*start-time* (get-internal-real-time)
-	*battle?* nil))
+	*ha2ne2* nil))
 
+(defun game-over-message (p)
+  (scr-format "Game Over.~%")
+  (scr-format "あなたは地下~d階で力尽きた。~%" (player-map p))
+  (scr-format "もう一度挑戦しますか？(yes=1 or no=2)~%")
+  (case (read-command-char)
+    (1 (main))
+    (2 nil)
+    (otherwise (game-over-message p))))
 ;;バトル開始
 (defun orc-battle (p)
   (scr-format "~%敵が現れた！！~%")
@@ -50,11 +58,7 @@
   (scr-fresh-line)
   (setf *battle?* nil)
   (when (player-dead p)
-    (scr-format "Game Over.~%")
-    (scr-format "あなたは地下~d階で力尽きた。~%" (player-map p))
-    (scr-format "もう一度挑戦しますか？(yes=1 or no=2)~%")
-    (case (read-command-char)
-          (1 (main))))
+    (game-over-message p))
   (when (monsters-dead)
     (loop while (>= (player-exp p) *lv-exp*)
 	  do (scr-format "     「レベルアップ！！」~%")
@@ -76,11 +80,7 @@
   (game-loop p)
   (setf *battle?* nil)
   (when (player-dead p)
-    (scr-format "Game Over.~%")
-    (scr-format "ボスに倒された！~%")
-    (scr-format "もう一度挑戦しますか？(yes=1 or no=2)~%")
-    (case (read-command-char)
-          (1 (main))))
+    (game-over-message p))
   (when (monsters-dead)
     (scr-format "「大勝利！」~%~%")
     (setf *end* 1)))
@@ -92,19 +92,21 @@
   (game-loop p)
   (setf *battle?* nil)
   (when (player-dead p)
-    (scr-format "Game Over.~%")
-    (scr-format "ハツネツエリアに倒された！~%")
-    (scr-format "もう一度最初から挑戦しますか？(yes=1 or no=2)~%")
-    (case (read-command-char)
-          (1 (main))))
+    (game-over-message p))
   (when (monsters-dead)
     (setf *boss?* 0
 	  *ha2ne2* t)
     (scr-format "「大勝利！」~%")
-    (scr-format "「ハツネツの剣を拾った！装備しますか？」(yes=1 or no=2)~%")
+    (scr-format "「ハツネツの剣を拾った！装備しますか？」(yes=z or no=x)~%")
+    (let ((item (assoc "ハツネツの剣" *buki* :test #'equal)))
+      (scr-format "現在の装備品：~a 攻撃力:~d HP:~d 素早さ:~d~%"
+		  (first (player-buki p)) (second (player-buki p))
+		  (third (player-buki p)) (fourth (player-buki p)))
+      (scr-format "発見した装備：~a 攻撃力:~d HP:~d 素早さ:~d~%"
+		  (first item) (second item) (third item) (fourth item))
       (case (read-command-char)
-        (1 (equip-buki (assoc "ハツネツの剣" *buki* :test #'equal) p))
-        (otherwise (scr-format "ハツネツの剣を捨てた。~%")))))
+        (z (equip-buki item p))
+        (otherwise (scr-format "ハツネツの剣を捨てた。~%"))))))
 
 ;;バトル時、プレイヤーが死ぬかモンスターが全滅するまでループ
 (defun game-loop (p)
@@ -143,10 +145,10 @@
 (defun player-attack (p)
   (scr-fresh-line)
   ;;(show-player p)
-  (scr-format "攻撃方法: [1]突く [2]ダブルスウィング [3]なぎ払う [q]回復薬を使う:~%")
+  (scr-format "攻撃方法: [z]突く [x]ダブルスウィング [c]なぎ払う [v]待機 [q]回復薬を使う:~%")
   (case (read-command-char)
-    (1 (atack-p p (+ 2 (randval (ash (player-str p) -1)))))
-    (2 (let ((x (randval (truncate (/ (player-str p) 6)))))
+    (z (atack-p p (+ 2 (randval (ash (player-str p) -1)))))
+    (x (let ((x (randval (truncate (/ (player-str p) 6)))))
 	 (scr-princ "ダブルスウィングのダメージは ")
 	 (scr-princ x)
 	 (scr-fresh-line)
@@ -154,15 +156,18 @@
 	 (show-monsters)
 	 (unless (monsters-dead)
 	   (atack-p p x))))
-    (3
+    (c
      (scr-fresh-line)
      (scr-format "-------------あなたの攻撃--------------~%")
      (dotimes (x (1+ (randval (truncate (/ (player-str p) 3)))))
 	 (unless (monsters-dead)
 	   (monster-hit p (random-monster) 1))))
+    (v
+     (scr-fresh-line)
+     (scr-format "ぼけ〜~%"))
     (q (use-heal p))
     (otherwise
-     (scr-format "1,2,3の中から選んでください！~%")
+     (scr-format "z,x,c,v,qの中から選んでください！~%")
      (player-attack p))))
 
 (defun randval (n)
@@ -178,20 +183,30 @@
 (defun ascii->number (x)
   (if (null (numberp x))
       (- (char-code (char (symbol-name x) 0)) 64)))
+
+(defun auto-pick-monster (num)
+  (let ((m (aref *monsters* num)))
+    (if (null (monster-dead m))
+	m
+	(auto-pick-monster (1+ num)))))
 ;;モンスター選択
 (defun pick-monster (p)
   (scr-fresh-line)
   (scr-princ "攻撃したいモンスター番号を選択 #:")
   (scr-fresh-line)
-  (let ((x (ascii->number (read-command-char))))
-    (if (not (and (integerp x) (>= x 1) (<= x (player-monster-num p))))
-	(progn (scr-princ "有効なモンスター番号ではありません。")
-	       (pick-monster p))
-	(let ((m (aref *monsters* (1- x))))
-	  (if (monster-dead m)
-	      (progn (scr-princ "そのモンスターはすでに死んでます。")
-		     (pick-monster p))
-	      m)))))
+  (let ((key (read-command-char)))
+    (case key
+      (z (auto-pick-monster 0))
+      (otherwise
+       (let ((x (ascii->number key)))
+	 (if (not (and (integerp x) (>= x 1) (<= x (player-monster-num p))))
+	     (progn (scr-princ "有効なモンスター番号ではありません。")
+		    (pick-monster p))
+	     (let ((m (aref *monsters* (1- x))))
+	       (if (monster-dead m)
+		   (progn (scr-princ "そのモンスターはすでに死んでます。")
+			  (pick-monster p))
+		   m))))))))
 
 ;;ランダムなモンスターグループを作る
 (defun init-monsters (p)
@@ -278,9 +293,6 @@
 	(orc
 	 (incf (player-exp p) 2)
 	 (scr-princ "「オークを倒しました！」 "))
-	(hydra
-	 (incf (player-exp p) 4)
-	 (scr-princ "「ヒドラを倒しました！」 "))
 	(slime-mold
 	 (incf (player-exp p) 3)
 	 (scr-princ "「スライムを倒しました！」 "))
@@ -304,8 +316,15 @@
        (scr-format "「ハツネツの攻撃。~dのダメージをくらった。」~%" x)
        (decf (player-hp p) x))
       (1
-       (scr-format "「ネコPパンチ。力が~d下がった。」~%" x)
-       (decf (player-str p) x))
+       (let ((dame-str (- (player-str p) x)))
+	 (if (= (player-str p) 0)
+	     (progn (scr-format "「ネコPパンチ。HPが~d下がった。」~%" x)
+		    (decf (player-hp p) x))
+	     (if (>= dame-str 0)
+		 (progn (scr-format "「ネコPパンチ。力が~d下がった。」~%" x)
+			(decf (player-str p) x))
+		 (progn (scr-format "「ネコPパンチ。力が~d下がった。」~%" (player-str p))
+			(setf (player-str p) 0))))))
       (2
        (scr-format "「ハツネツが料理してご飯を食べている。ハツネツのHPが~d回復した！」~%" x)
        (incf (monster-health m) x)))))
@@ -321,13 +340,26 @@
        (scr-format "「もげぞうの攻撃。~dのダメージをくらった。」~%" x)
        (decf (player-hp p) x))
       ((1 4)
-       (scr-format "「もげぞうの不思議な踊り。素早さが~d下がった。」~%" x)
-       (decf (player-agi p) x))
+       (let ((dame-agi (- (player-agi p) x)))
+	 (if (= (player-agi p) 0)
+	     (progn (scr-format "「もげぞうの攻撃。~dのダメージをくらった。」~%" x)
+		    (decf (player-hp p) x))
+	     (if (>= dame-agi 0)
+		 (progn (scr-format "「もげぞうの不思議な踊り。素早さが~d下がった。」~%" x)
+			(decf (player-agi p) x))
+		 (progn (scr-format "「もげぞうの不思議な踊り。素早さが~d下がった。」~%" (player-agi p))
+			(setf (player-agi p) 0))))))
       (2
-       (scr-format "「もげぞうのなんかすごい攻撃！すべてのステータスが~d下がった！」~%" x)
-       (decf (player-hp p) x)
-       (decf (player-agi p) x)
-       (decf (player-str p) x)))))
+       (let ((dame-agi (- (player-agi p) x))
+	     (dame-str (- (player-str p) x)))
+	 (scr-format "「もげぞうのなんかすごい攻撃！すべてのステータスが~d下がった！」~%" x)
+	 (decf (player-hp p) x)
+	 (if (>= dame-agi 0)
+	     (decf (player-agi p) x)
+	     (setf (player-agi p) 0))
+	 (if (>= dame-str 0)
+	     (decf (player-str p) x)
+	     (setf (player-str p) 0)))))))
 ;;-------------------メタル------------------------------
 (defstruct (yote1 (:include monster))
   (atk    (randval (+ 10 *monster-level*))))
@@ -362,10 +394,7 @@
 
 (defmethod monster-attack ((m orc) (p player))
   (let ((x (randval (orc-club-level m))))
-    (scr-princ "「オークが棍棒で殴ってきて ")
-    (scr-princ x)
-    (scr-princ " のダメージをくらった。」")
-    (scr-fresh-line)
+    (scr-format "「オークが棍棒で殴ってきて ~d のダメージをくらった。」~%" x)
     (decf (player-hp p) x)))
 
 
@@ -382,19 +411,15 @@
   (decf (monster-health m) x)
   (scr-format "「~aに ~dのダメージを与えた！」~%" (type-of m) x)
   (if (monster-dead m)
-      (scr-princ "「首がなくなったヒドラは倒れた。」")
-      (progn (scr-princ "「")
-	     (scr-princ x)
-	     (scr-princ " 本のヒドラの首を斬った！」 "))))
+      (progn
+	 (incf (player-exp p) 4)
+         (scr-princ "「首がなくなったヒドラは倒れた。」"))
+      (scr-format "「~d 本のヒドラの首を斬った！」" x)))
 
 (defmethod monster-attack ((m hydra) (p player))
   (let ((x (randval (ash (monster-health m) -1))))
-    (scr-princ "「ヒドラの攻撃 ")
-    (scr-princ x)
-    (scr-princ " のダメージを食らった。」")
-    (scr-fresh-line)
-    (scr-princ "「ヒドラの首が一本生えてきた！」")
-    (scr-fresh-line)
+    (scr-format "「ヒドラの攻撃 ~dのダメージを食らった。」~%" x)
+    (scr-format "「ヒドラの首が一本生えてきた！」~%")
     (incf (monster-health m))
     (decf (player-hp p) x)))
 
@@ -404,18 +429,19 @@
 (push #'make-slime-mold *monster-builders*)
 
 (defmethod monster-show ((m slime-mold))
-  (scr-princ "ベタベタ度 ")
-  (scr-princ (slime-mold-sliminess m))
-  (scr-princ " のスライム"))
+  (scr-format "ベタベタ度 ~d のスライム" (slime-mold-sliminess m)))
 
 (defmethod monster-attack ((m slime-mold) (p player))
   (let ((x (randval (slime-mold-sliminess m))))
     (cond
       ((> (player-agi p) 0)
-       (scr-format "「スライムは足に絡みついてきてあなたの素早さが ~d 下がった！~%" x)
-       (decf (player-agi p) x)
-       (if (< (player-agi p) 0)
-	 (setf (player-agi p) 0)))
+       (let ((dame-agi (- (player-agi p) x)))
+	 (if (>= dame-agi 0)
+	     (progn (scr-format "「スライムは足に絡みついてきてあなたの素早さが ~d 下がった！~%" x)
+		    (decf (player-agi p) x))
+	     (progn (scr-format "「スライムは足に絡みついてきてあなたの素早さが ~d 下がった！~%"
+				(player-agi p))
+		    (setf (player-agi p) 0)))))
       (t
 	(scr-format "「スライムが何か液体を吐きかけてきて ~d ダメージくらった」~%" x)
 	(decf (player-hp p) x)))))
@@ -476,7 +502,7 @@
             (5 (scr-format " イ:イベント~%"))
             (6 (scr-format " ハ:中ボス~%"))
 	    (otherwise (scr-fresh-line))))))
-  (scr-format "どちらに移動しますか？[w]上 [s]下 [d]右 [a]左 [q]薬を使う [z]終わる: ~%"))
+  (show-map-key))
 #|
 ;;マップ表示 視界制限ver
 (defun show-fog-map (map p)
@@ -534,6 +560,7 @@
 	     (scr-format "~%「もげぞうを倒したが、逃したハツネツエリアが新たな迷宮を作り出した・・・」~%
 「が、それはまた別のお話。」~%"))
 	 (scr-format "クリアタイムは~2,'0d:~2,'0d:~2,'0d でした！~%" h m s)
+	 (ranking-dialog ss)
 	 (scr-format "もう一度挑戦しますか？(yes=1 or no=2)~%"))
        (case (read-command-char)
          (1 (main))))
@@ -551,9 +578,9 @@
 
 ;;壁破壊
 (defun kabe-break (map p y x)
-  (scr-format "「ハンマーで壁を壊しますか？」[yes=1 or no=2]:~%")
+  (scr-format "「ハンマーで壁を壊しますか？」[yes=z or no=x]:~%")
   (case (read-command-char)
-    (1
+    (z
       (if (>= (random 10) 3)
 	(setf (aref map (+ (player-posy p) y) (+ (player-posx p) x)) 0)
 	(setf (aref map (+ (player-posy p) y) (+ (player-posx p) x)) 3))
@@ -575,20 +602,21 @@
 ;;見つけた武器を装備するか
 (defun equip? (p item-a)
   (let ((item (assoc item-a *buki* :test #'equal)))
-  (scr-format "「~aを見つけた」~%" (first item))
-  (scr-format "現在の装備品：~a 攻撃力:~d HP:~d 素早さ:~d~%"
-	  (first (player-buki p)) (second (player-buki p)) (third (player-buki p)) (fourth (player-buki p)))
-  (scr-format "発見した装備：~a 攻撃力:~d HP:~d 素早さ:~d~%"
-	  (first item) (second item) (third item) (fourth item))
-  (scr-format "「装備しますか？」(yes=1 or no=2)~%")
-  (case (read-command-char)
-    (1
-     (scr-format "「~aを装備した。」~%" (first item))
-     (equip-buki item p))
-    (2
-     (scr-format "「~aを見なかったことにした。」~%" (first item)))
-    (otherwise
-     (equip? p item-a)))))
+    (scr-format "「~aを見つけた」~%" (first item))
+    (scr-format "現在の装備品：~a 攻撃力:~d HP:~d 素早さ:~d~%"
+		(first (player-buki p)) (second (player-buki p))
+		(third (player-buki p)) (fourth (player-buki p)))
+    (scr-format "発見した装備：~a 攻撃力:~d HP:~d 素早さ:~d~%"
+		(first item) (second item) (third item) (fourth item))
+    (scr-format "「装備しますか？」(yes=z or no=x)~%")
+    (case (read-command-char)
+      (z
+       (scr-format "「~aを装備した。」~%" (first item))
+       (equip-buki item p))
+      (x
+       (scr-format "「~aを見なかったことにした。」~%" (first item)))
+      (otherwise
+       (equip? p item-a)))))
 
 (defun hummer-get (p)
   (scr-format "「ハンマーを見つけた。」~%")
@@ -722,5 +750,97 @@
     (t
       (scr-format "~% 「回復薬を持っていません！」~%"))))
 
+;; ランキングは (("一位の名前" 秒数) ("二位の名前" 秒数) ...) の形の属
+;; 性リストで、秒数でソートされて保存される。
+(defconstant +ranking-file-name+ "ranking.lisp") ; ランキングファイルの名前
+(defconstant +ranking-max-length+ 10)            ; ランキングに登録するエントリーの最大数
 
+;; 合計の秒数を (時 分 秒) のリストに変換する。
+(defun total-seconds-to-hms (ss)
+  (let* ((h (floor ss 3600))
+         (m (floor (mod ss 3600) 60))
+         (s (mod ss 60)))
+    (list h m s)))
 
+;; プレーヤー name の記録 total-seconds を ranking に登録し、新しいラ
+;; ンキングデータを返す。ranking に既にプレーヤーの項目がある場合は、
+;; 秒数が少なければ項目を更新する。項目の数が +ranking-max-length+ を
+;; 超えると、超えた分は削除される。
+(defun ranking-update (name total-seconds ranking)
+  (let ((ranking1
+         (stable-sort
+          (if (and (assoc name ranking :test #'string-equal)
+                   (< total-seconds (cadr (assoc name ranking :test #'string-equal))))
+              (mapcar (lambda (entry)
+                        (if (string-equal (car entry) name)
+                            (list name total-seconds)
+                          entry))
+                      ranking)
+            ;; 同じタイムは後ろに追加する。早い者勝ち。
+            (append ranking (list (list name total-seconds))))
+          #'< :key #'cadr)))
+    ;; 最大で +ranking-max-length+ の項目を返す。
+    (loop for i from 1 to +ranking-max-length+
+          for entry in ranking1
+          collect entry)))
+
+;; ランキングの内容を表示する。name を指定すると該当の項目の左に矢印が
+;; 表示される。
+(defun ranking-show (ranking &optional name)
+  (loop for place from 1 to 10
+        for entry in ranking
+        do
+        (destructuring-bind (entry-name total-seconds) entry
+          (destructuring-bind (h m s) (total-seconds-to-hms total-seconds)
+            (let ((arrow (if (string-equal entry-name name) "=>" "  ")))
+              (scr-format "~a ~a位 ~2,'0d:~2,'0d:~2,'0d ~a~%"
+                          arrow place h m s entry-name))))))
+
+;; ランキングを更新する。ランキングファイルからデータを読み込み、1引数
+;; の関数 fun にランキングデータを渡す。fun の返り値をランキングファイ
+;; ルに保存する。
+;;
+;; TODO: 別のプロセスがランキングを同時に変更しないようにロックすべき。
+(defun ranking-transaction (fun)
+  (flet ((read-ranking ()
+                       (with-open-file (file +ranking-file-name+
+                                             :external-format :utf8
+                                             :if-does-not-exist nil)
+                                       (if file
+                                           (let ((buf (make-string (file-length file))))
+                                             (read-sequence buf file)
+                                             (read-from-string buf))
+                                         ;; ランキングファイルが存在しなかった場合は空のデータを返す。
+                                         '())))
+         (write-ranking (ranking)
+                        (with-open-file (file +ranking-file-name+
+                                              :direction :output
+                                              :if-exists :supersede
+                                              :if-does-not-exist :create)
+                                        (format file "~S" ranking))))
+    (let ((ranking (read-ranking)))
+        (write-ranking (funcall fun ranking)))))
+
+;; メッセージ message を表示し、ユーザーから 1 あるいは 2 を受け取る。
+;; 1 を受け取れば t を、さもなくば nil を返す。
+(defun yes-no-dialog (message)
+  (scr-format "~a(yes=1 or no=2)~%" message)
+  (= 1 (read-command-char)))
+
+;; クリア記録 total-seconds をランキングファイルへ登録時のダイアログ。
+(defun ranking-dialog (total-seconds)
+  (when (yes-no-dialog "ランキングに登録しますか？")
+    (scr-format "名前を教えてください:~%")
+    (let ((name (read-string)))
+      (ranking-transaction
+       (lambda (ranking)
+         (let ((ranking1 (ranking-update name total-seconds ranking)))
+           (if (equal ranking1 ranking)
+               (progn
+                 (scr-format "ランキングに入りませんでした。~%")
+                 (ranking-show ranking)
+                 ranking)
+             (progn
+               (scr-format "見事ランクイン！~%")
+               (ranking-show ranking1 name)
+               ranking1))))))))
