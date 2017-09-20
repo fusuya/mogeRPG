@@ -4,7 +4,11 @@
 (defparameter *yoko* 11)
 (defparameter *monsters* nil)
 (defparameter *monster-builders* nil)
-
+(defparameter +init-omomin+ ;;最終決定したらdefconstantに
+  ;;'(54 53 52 51 50 49 48 47 46 45 44 43 42 41 40 39 38 37 36 35 34 33 32 31 30
+    ;;29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1))
+  '(100 97 94 91 88 85 82 79 76 73 70 67 64 61 58 55 52 49 46 43 40 37 32 31 30
+    29 28 27 26 13 12 12 11 11 10 10 9 9 8 8 7 7 6 6 5 5 4 4 3 3 2 2 1 1))
 (defparameter *battle?* nil)
 (defparameter *monster-num* 6)
 (defparameter *monster-level* 0) ;;階数によるモンスターのレベル
@@ -13,6 +17,7 @@
 (defparameter *lv-exp* 100)
 (defparameter *start-time* 0)
 (defparameter *ha2ne2* nil)
+(defparameter *omomin* (copy-tree +init-omomin+))
 
 (defstruct player
   (hp 30)
@@ -39,7 +44,8 @@
 	*end* 0
 	*lv-exp* 100
 	*start-time* (get-internal-real-time)
-	*ha2ne2* nil))
+	*ha2ne2* nil
+	*omomin* (copy-tree +init-omomin+)))
 
 (defun game-over-message (p)
   (scr-format "Game Over.~%")
@@ -482,6 +488,7 @@
     (6  "イ") ;; イベント
     (7  "ハ") ;; 中ボス ハツネツエリア
     ))
+
 ;;マップ表示
 (defun show-map (map p)
   (scr-format "地下~d階~%" (player-map p))
@@ -601,7 +608,7 @@
 
 ;;見つけた武器を装備するか
 (defun equip? (p item-a)
-  (let ((item (assoc item-a *buki* :test #'equal)))
+  (let ((item item-a));;(assoc item-a *buki* :test #'equal)))
     (scr-format "「~aを見つけた」~%" (first item))
     (scr-format "現在の装備品：~a 攻撃力:~d HP:~d 素早さ:~d~%"
 		(first (player-buki p)) (second (player-buki p))
@@ -621,6 +628,10 @@
 (defun hummer-get (p)
   (scr-format "「ハンマーを見つけた。」~%")
   (incf (player-hammer p)))
+
+
+    
+
 ;;しょぼいものほど確率が高くなるように
 (defun buki-get (p item-l)
   (let ((x (random 32)))
@@ -674,6 +685,49 @@
       (1 ;;ハンマーゲット
        (hummer-get p)))))
 
+
+;;アイテム
+(defun rnd-pick (i rnd lst len)
+  (if (= i len)
+      (1- i)
+      (if (< rnd (nth i lst))
+	  i
+	  (rnd-pick (1+ i) (- rnd (nth i lst)) lst len))))
+;;重み付け抽選
+(defun weightpick (lst)
+  (let* ((total-weight (apply #'+ lst))
+	 (len (length lst))
+	 (rnd (random total-weight)))
+    (rnd-pick 0 rnd lst len)))
+
+;;(←しょぼい　レア→)         
+;; '(4 3 2 1 1) → '(1 4 3 2 1)→'(2 1 4 3)
+(defun omomin-zurashi (lst)
+  (let ((x (car (last lst))))
+    (setf lst (remove x lst :count 1 :from-end t))
+    (push x lst)
+    lst))
+;;テスト用------------------------------------
+#|
+(defun test-pick ()
+  (let ((hoge (make-array 54)))
+    (dotimes (i 10000)
+      (incf (aref hoge (weightpick *omomin*))))
+    hoge))
+(defun test-hoge ()
+  (let ((x 1))
+	   (loop for hoge from 0 to 53
+		 collect x
+		 do (incf x 1))))
+|#
+;;---------------------------------------------
+;;武器ゲット２ 全アイテムからランダム
+(defun item-get2 (p)
+  (case (random 4)
+    ((0 1 2)
+     (equip? p (nth (weightpick *omomin*) *buki*)))
+    (3 (hummer-get p))))
+
 ;;プレイヤーの場所更新
 (defun update-player-pos (p x y map)
   (setf (aref map (+ (player-posy p) y) (+ (player-posx p) x)) 1)
@@ -718,10 +772,12 @@
      (incf (player-map p))
      (if (= (mod (player-map p) 2) 0)
 	 (incf (player-hammer p)))
+     (if (= (mod (player-map p) 5) 0)
+	 (setf *omomin* (omomin-zurashi *omomin*)))
      (if (= (mod (player-map p) 10) 0)
 	 (incf *monster-level*)))
     (3 ;;宝箱
-     (item-get p)
+     (item-get2 p)
      (update-player-pos p x y map))
     (5 ;;ボス
      (update-player-pos p x y map)
