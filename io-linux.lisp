@@ -55,6 +55,7 @@
 
 (defun init-charms ()
   (cl-charms/low-level:initscr)
+  (charms/ll:clearok charms/ll:*stdscr* 1)
   (cl-charms/low-level:scrollok cl-charms/low-level:*stdscr* 1)
   (cl-charms/low-level:keypad cl-charms/low-level:*stdscr* 1)
   (cl-charms/low-level:raw)
@@ -79,3 +80,6 @@
 
 (defun show-map-key ()
   (scr-format "どちらに移動しますか？[↑ ]上 [↓ ]下 [→ ]右 [← ]左 [q]薬を使う [r]終わる: ~%"))
+
+(defun gamen-clear ()
+  (charms/ll:clear))
