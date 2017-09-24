@@ -111,7 +111,7 @@
 	  *ha2ne2* t)
     (scr-format "「大勝利！」~%")
     (scr-format "「ハツネツの剣を拾った！装備しますか？」(yes=z or no=x)~%")
-    (let ((item (assoc "ハツネツの剣" *buki* :test #'equal)))
+    (let ((item (assoc "ハツネツの剣" *event-buki* :test #'equal)))
       (scr-format "現在の装備品：~a 攻撃力:~d HP:~d 素早さ:~d~%"
 		  (first (player-buki p)) (second (player-buki p))
 		  (third (player-buki p)) (fourth (player-buki p)))
@@ -723,7 +723,7 @@
   (if (equal (car (player-buki p)) "もげぞーの剣")
       (progn
         (scr-format "~%「もげぞーの剣が輝き出し、もげぞうの剣に進化した！」~%")
-        (equip-buki (assoc "もげぞうの剣" *buki* :test #'equal) p))
+        (equip-buki (assoc "もげぞうの剣" *event-buki* :test #'equal) p))
       (scr-format "~%「なにも起こらなかった。」~%"))
   (scr-format "~%次へ = z~%")
   (read-command-char))
