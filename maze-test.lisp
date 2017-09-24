@@ -7,27 +7,9 @@
       (30 30 30 30 30  0 30 30 30 30 30)
       (30 30 30 30 30  0 30 30 30 30 30)
       (30 30 30 30 30  0 30 30 30 30 30)
-      (30  4  0  0  0  0  0  0  0  6 30)
+      (30  3  0  0  0  0  0  0  0  6 30)
       (30 30 30 30 30  1 30 30 30 30 30)
       (30 30 30 30 30 30 30 30 30 30 30)))
-
-(defparameter *map50*
-  #2A((30 30 30 30 30 30 30 30 30 30 30)
-      (30 30 30 30 30 30 30 30 30 30 30)
-      (30  2 30 30  0  7  0 30 30 30 30)
-      (30  0 30 30  0  0  0 30 30 30 30)
-      (30  0 30 30 30  0 30 30 30 30 30)
-      (30  0  0  0  0  0 30 30 30 30 30)
-      (30 30 30 30 30  0 30 30 30 30 30)
-      (30 30 30 30 30  0 30 30 30 30 30)
-      (30  4  0  0  0  0  0  0  0  3 30)
-      (30 30 30 30 30  1 30 30 30 30 30)
-      (30 30 30 30 30 30 30 30 30 30 30)))
-
-(defparameter *map0*
-  (make-array (list *tate* *yoko*)))
-(defparameter *1234* '(1 2 3 4))
-
 
 
 (defun init-map (map tate yoko) ;;マップを壁で埋める
@@ -85,14 +67,10 @@
 		   (setf stop? nil)
 		   (recursion y (- x 2) map)))))))
     (if stop? ;;行き止まりだったら
-	(let ((item (random 4)))
+	(progn
 	  ;;(scr-format "y=~d x=~d~%" y x);;テスト用
 	  (push (list y x) (donjon-stop-list map)) ;;行き止まりの座標リスト
-	  ;;(case item
-	  ;;  (0 ;;薬
-	  ;;   (setf (aref (donjon-map map) y x) 4))
-	  ;;  ((1 2 3) ;;宝
-	     (setf (aref (donjon-map map) y x) 3)))))
+	  (setf (aref (donjon-map map) y x) 3)))))
 
 (defun diff-num (num len)
   (let ((hoge (random len)))
@@ -116,31 +94,33 @@
 	 (startx 0)
 	 (y 0) 
 	 (starty 0))
-    
-    (if (or (= (player-map p) 50) (= (player-map p) 100));;ボスマップは広くする
-	(setf (donjon-yoko map) (+ *yoko* 8)
-	      (donjon-tate map) (+ *tate* 2))
-	(setf (donjon-yoko map) *yoko*
-	      (donjon-tate map) *tate*))
-    
     (setf (donjon-stop-list map) nil)
     (setf (donjon-map map) (make-array (list (donjon-tate map) (donjon-yoko map))));;マップ配列作成
     (init-map (donjon-map map) (donjon-tate map) (donjon-yoko map)) ;;マップ初期化
-    (setf x (random (floor (donjon-yoko map) 2))
-	  y (random (floor (donjon-tate map) 2))
-	  startx (+ (* x 2) 1)
-	  starty (+ (* y 2) 1))
-    (setf (aref (donjon-map map) starty startx) 0) ;;初期位置を通路にする
-    (recursion starty startx map) ;;迷路生成
-    (setf (aref (donjon-map map) starty startx) 1) ;;主人公の位置
-    (setf (player-posy p) starty
-	  (player-posx p) startx) ;;初期位置
     (cond
-      ((= (player-map p) 50)
-       (set-boss-kaidan map 7))
       ((= (player-map p) 100)
-       (set-boss-kaidan map 5))
-      (t (set-boss-kaidan map 0)))))
+       (set-map map p *map100*))
+      (t
+       (if (= (player-map p) 50);;ボスマップは広くする
+	   (setf (donjon-yoko map) (+ *yoko* 8)
+		 (donjon-tate map) (+ *tate* 2))
+	   (setf (donjon-yoko map) *yoko*
+		 (donjon-tate map) *tate*))
+       (setf x (random (floor (donjon-yoko map) 2))
+	     y (random (floor (donjon-tate map) 2))
+	     startx (+ (* x 2) 1)
+	     starty (+ (* y 2) 1))
+       (setf (aref (donjon-map map) starty startx) 0) ;;初期位置を通路にする
+       (recursion starty startx map) ;;迷路生成
+       (setf (aref (donjon-map map) starty startx) 1) ;;主人公の位置
+       (setf (player-posy p) starty
+	     (player-posx p) startx) ;;初期位置
+       (cond
+	 ((= (player-map p) 50)
+	  (set-boss-kaidan map 7))
+	 ((= (player-map p) 100)
+	  (set-boss-kaidan map 5))
+	 (t (set-boss-kaidan map 0)))))))
     ;;(d-map-map mapn)))
     ;;(test-show-map (d-map-map mapn))))
     
