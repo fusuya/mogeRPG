@@ -5,11 +5,6 @@
 (defparameter *monsters* nil)
 (defparameter *monster-builders* nil)
 ;;宝箱から出る武器の確率 *buki*に対応
-(defparameter +init-omomin+ ;;最終決定したらdefconstantに
-  ;;'(54 53 52 51 50 49 48 47 46 45 44 43 42 41 40 39 38 37 36 35 34 33 32 31 30
-    ;;29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1))
-  '(100 97 94 91 88 85 82 79 76 73 70 67 64 61 58 55 52 49 46 43 40 37 32 31 30
-    29 28 27 26 13 12 12 11 11 10 10 9 9 8 8 7 7 6 6 5 5 4 4 3 3 2 2 1 1))
 (defparameter *battle?* nil)
 (defparameter *monster-num* 6)
 (defparameter *monster-level* 1) ;;階数によるモンスターのレベル
@@ -18,7 +13,7 @@
 (defparameter *lv-exp* 100)
 (defparameter *start-time* 0)
 (defparameter *ha2ne2* nil)
-(defparameter *omomin* (copy-tree +init-omomin+))
+(defparameter *copy-buki* (copy-tree *buki-d*))
 
 (defstruct player
   (hp 30)
@@ -29,7 +24,7 @@
   (maxstr 30)
   (posy 0)
   (posx 0)
-  (map 50) ;;マップ深度
+  (map 1) ;;マップ深度
   (heal 2) ;;持ってる薬の数
   (hammer 5) ;;持ってるハンマーの数
   (level 1)
@@ -53,7 +48,7 @@
 	*lv-exp* 100
 	*start-time* (get-internal-real-time)
 	*ha2ne2* nil
-	*omomin* (copy-tree +init-omomin+)))
+	*copy-buki* (copy-tree *buki-d*)))
 
 (defun game-over-message (p)
   (scr-format "Game Over.~%")
@@ -93,7 +88,7 @@
 ;;ボスバトル
 (defun boss-battle (p)
   (scr-format "~%もげぞうが現れた！！~%")
-  (boss-monsters p)
+  (boss-monsters p 0)
   ;;(init-player)
   (game-loop p)
   (setf *battle?* nil)
@@ -105,7 +100,7 @@
 ;;ハツネツバトル
 (defun ha2ne2-battle (p)
   (scr-format "~%ハツネツエリアが現れた！！~%")
-  (ha2ne2-monsters p)
+  (boss-monsters p 1)
   ;;(init-player)
   (game-loop p)
   (setf *battle?* nil)
@@ -247,27 +242,16 @@
 	     (make-array (setf (player-monster-num p)
 			       (randval (+ *monster-num* (floor (player-level p) 4))))))))
 ;;配列の０番目にボス、あとはランダムなモンスター
-(defun boss-monsters (p)
+(defun boss-monsters (p m)
   (let ((hoge 0))
     (setf *monsters*
 	  (map 'vector
 	       (lambda (x)
 		 (if (= hoge 0)
 		     (progn (incf hoge)
-			    (make-boss :health 200))
-		     (funcall (nth (random (length *monster-builders*))
-				   *monster-builders*))))
-	       (make-array 10)))
-    (setf (player-monster-num p) 10)))
-;;
-(defun ha2ne2-monsters (p)
-  (let ((hoge 0))
-    (setf *monsters*
-	  (map 'vector
-	       (lambda (x)
-		 (if (= hoge 0)
-		     (progn (incf hoge)
-			    (make-ha2ne2 :health 120))
+			    (cond
+			      ((= m 0) (make-boss :health 300))
+			      ((= m 1) (make-ha2ne2 :health 220))))
 		     (funcall (nth (random (length *monster-builders*))
 				   *monster-builders*))))
 	       (make-array 10)))
@@ -581,11 +565,7 @@
 	    (4 (scr-format " 暗:見えてない場所~%"))
 	    (otherwise (scr-fresh-line)))))))
 |#
-;;マップ設定
-(defun set-map (map moto)
-  (loop for i from 0 below *tate* do
-    (loop for j from 0 below *yoko* do
-      (setf (aref map i j) (aref moto i j)))))
+
 ;;プレイヤーが死ぬか先頭に入るまでループ
 (defun main-game-loop (map p)
   (unless (player-dead p)
@@ -615,7 +595,7 @@
          (1 (main))))
       ((= *end* 0)
        (main-game-loop map p)))))
-
+;;ゲーム開始
 (defun main ()
   (init-charms)
   (setf *random-state* (make-random-state t))
@@ -676,60 +656,6 @@
   (setf (player-msg p) "「回復薬を見つけた。」")
   (incf (player-heal p)))
 
-    
-
-;;しょぼいものほど確率が高くなるように
-(defun buki-get (p item-l)
-  (let ((x (random 32)))
-    (case x
-      ((0 1 2 3 4 5)
-       (equip? p (aref item-l 0)))
-      ((6 7 8 9 10)
-       (equip? p (aref item-l 1)))
-      ((11 12 13 14)
-       (equip? p (aref item-l 2)))
-      ((15 16 17)
-       (equip? p (aref item-l 3)))
-      ((18 19 20)
-       (equip? p (aref item-l 4)))
-      ((21 22 23)
-       (equip? p (aref item-l 5)))
-      ((24 25 26)
-       (equip? p (aref item-l 6)))
-      ((27 28)
-       (equip? p (aref item-l 7)))
-      ((29 30)
-       (equip? p (aref item-l 8)))
-      (31
-       (equip? p (aref item-l 9))))))
-;;アイテムゲット
-(defun item-get (p)
-  (let ((x (random 4)))
-    (case x
-      ((0 2 3) ;;武器ゲット
-       (cond
-	 ((<= 1 (player-map p) 10)
-	  (buki-get p *buki1-10*))
-	 ((<= 11 (player-map p) 20)
-	  (buki-get p *buki11-20*))
-	 ((<= 21 (player-map p) 30)
-	  (buki-get p *buki21-30*))
-	 ((<= 31 (player-map p) 40)
-	  (buki-get p *buki31-40*))
-	 ((<= 41 (player-map p) 50)
-	  (buki-get p *buki41-50*))
-	 ((<= 51 (player-map p) 60)
-	  (buki-get p *buki51-60*))
-	 ((<= 61 (player-map p) 70)
-	  (buki-get p *buki61-70*))
-	 ((<= 71 (player-map p) 80)
-	  (buki-get p *buki71-80*))
-	 ((<= 81 (player-map p) 90)
-	  (buki-get p *buki81-90*))
-	 ((<= 91 (player-map p) 100)
-	  (buki-get p *buki91-100*))))
-      (1 ;;ハンマーゲット
-       (hummer-get p)))))
 
 
 ;;アイテム
@@ -741,17 +667,20 @@
 	  (rnd-pick (1+ i) (- rnd (nth i lst)) lst len))))
 ;;重み付け抽選
 (defun weightpick (lst)
-  (let* ((total-weight (apply #'+ lst))
-	 (len (length lst))
+  (let* ((lst1 (mapcar #'cdr lst))
+	 (total-weight (apply #'+ lst1))
+	 (len (length lst1))
 	 (rnd (random total-weight)))
-    (rnd-pick 0 rnd lst len)))
+    (car (nth (rnd-pick 0 rnd lst1 len) lst))))
 
       
 ;; '(4 3 2 1 1) → '(1 4 3 2 1)→'(1 1 4 3 2) '(1 1 1 4 3)
 (defun omomin-zurashi (lst)
-  (setf lst (butlast lst))
-  (push 1 lst)
-  lst)
+  (let ((buki (mapcar #'car lst))
+	(omomi (mapcar #'cdr lst)))
+    (setf omomi (butlast omomi))
+    (push 1 omomi)
+    (mapcar #'cons buki omomi)))
 ;;テスト用------------------------------------
 #|
 (defun test-pick ()
@@ -770,7 +699,7 @@
 (defun item-get2 (p)
   (case (random 5)
     ((0 1 2)
-     (equip? p (nth (weightpick *omomin*) *buki*)))
+     (equip? p (weightpick *copy-buki*)))
     (3 (hummer-get p))
     (4 (kusuri-get p))))
 
@@ -780,20 +709,24 @@
   (setf (aref map (player-posy p) (player-posx p)) 0)
   (setf (player-posy p) (+ (player-posy p) y)
 	(player-posx p) (+ (player-posx p) x)))
-;;bossマップセット
-(defun set-bossmap (map p boss-map)
-  (set-map map boss-map)
-  (setf (player-posx p) 5
-	(player-posy p) 9))
+;;マップ設定
+(defun set-map (map p moto)
+  (loop for i from 0 below (donjon-tate map) do
+    (loop for j from 0 below (donjon-yoko map) do
+      (if (= (aref moto i j) 1)
+	  (setf (player-posx p) j
+		(player-posy p) i))
+      (setf (aref (donjon-map map) i j) (aref moto i j)))))
+
 ;;100階イベント
 (defun moge-event (p)
   (if (equal (car (player-buki p)) "もげぞーの剣")
       (progn
         (scr-format "~%「もげぞーの剣が輝き出し、もげぞうの剣に進化した！」~%")
         (equip-buki (assoc "もげぞうの剣" *buki* :test #'equal) p))
-      (scr-format "「なにも起こらなかった。」~%")))
-  ;;(scr-format "enterを押してください。~%")
-  ;;(read-command-char))
+      (scr-format "~%「なにも起こらなかった。」~%"))
+  (scr-format "~%次へ = z~%")
+  (read-command-char))
 ;;移動後のマップ更新
 (defun update-map (map p y x)
   (case (aref (donjon-map map) (+ (player-posy p) y) (+ (player-posx p) x))
@@ -813,8 +746,8 @@
      (if (= (mod (player-map p) 2) 0)
 	 (incf (player-hammer p)))
      (if (= (mod (player-map p) 5) 0)
-	 (setf *omomin* (omomin-zurashi *omomin*)))
-     (if (= (mod (player-map p) 10) 0)
+	 (setf *copy-buki* (omomin-zurashi *copy-buki*)))
+     (if (= (mod (player-map p) 7) 0)
 	 (incf *monster-level*)))
     (3 ;;宝箱
      (item-get2 p)
