@@ -136,7 +136,7 @@
        (gamen-clear)
        (show-monsters2)
        (show-player p)
-       (scr-format "~%-------------敵のターン----------------~%")
+       (scr-format "~%-------------------敵のターン--------------------~%")
        (map 'list
             (lambda (m)
               (or (monster-dead m) (monster-attack m p)))
@@ -150,8 +150,8 @@
   (<= (player-hp p) 0))
 ;;プレイヤーのステータス表示(バトル時)
 (defun show-player (p)
-  (scr-format "~%あなたのステータス:HP ~d, 素早さ ~d, 力 ~d,~%"
-          (player-hp p) (player-agi p) (player-str p)) 
+  (scr-format "~%あなたのステータス:Lv ~d, HP ~d, 素早さ ~d, 力 ~d, exp ~d~%"
+          (player-level p) (player-hp p) (player-agi p) (player-str p) (player-exp p)) 
   (scr-format "持ち物:回復薬 ~d個~%" (player-heal p)))
 ;;
 (defun atack-p (p x)
@@ -210,7 +210,7 @@
 ;;モンスター選択
 (defun pick-monster (p)
   (scr-fresh-line)
-  (scr-princ "攻撃したいモンスター番号を選択 #:")
+  (scr-princ "攻撃したいモンスター番号を選択(z=自動) #:")
   (scr-fresh-line)
   (let ((key (read-command-char)))
     (case key
@@ -269,7 +269,7 @@
 ;;モンスター表示
 (defun show-monsters2 ()
   (scr-fresh-line)
-  (scr-format "---------------------------------------~%")
+  (scr-format "-----------------------敵が現れた！-------------------------~%")
   (scr-format "敵:~%")
   (let ((x 0))
     (map 'list
@@ -290,6 +290,18 @@
   (health (randval (+ 10 *monster-level*)))
   (damage  0))
 
+(defun yote1-drop ()
+  (let ((item (assoc "メタルヨテイチの剣" *event-buki* :test #'equal)))
+    (scr-format "「~aを拾った！装備しますか？」(yes=z or no=x)~%" (first item))
+    (scr-format "現在の装備品：~a 攻撃力:~d HP:~d 素早さ:~d~%"
+		(first (player-buki p)) (second (player-buki p))
+		(third (player-buki p)) (fourth (player-buki p)))
+    (scr-format "発見した装備：~a 攻撃力:~d HP:~d 素早さ:~d~%"
+		(first item) (second item) (third item) (fourth item))
+    (case (read-command-char)
+      (z (equip-buki item p))
+      (otherwise (scr-format "~aを捨てた。~%" (first item))))))
+
 (defmethod monster-hit2 (p m x)
   (decf (monster-health m) x)
   (incf (monster-damage m) x)
@@ -307,6 +319,8 @@
 	(brigand
 	 (incf (player-exp p) 5))
 	(yote1
+	 (if (= 1 (random 100))
+	     (yote1-drop))
 	 (incf (player-exp p) 100)))))
 
 
