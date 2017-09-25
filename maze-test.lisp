@@ -94,18 +94,18 @@
 	 (startx 0)
 	 (y 0) 
 	 (starty 0))
-    (setf (donjon-stop-list map) nil)
-    (setf (donjon-map map) (make-array (list (donjon-tate map) (donjon-yoko map))));;マップ配列作成
-    (init-map (donjon-map map) (donjon-tate map) (donjon-yoko map)) ;;マップ初期化
-    (cond
-      ((= (player-map p) 100)
-       (set-map map p *map100*))
-      (t
-       (if (= (player-map p) 50);;ボスマップは広くする
+    (if (= (player-map p) 50);;ボスマップは広くする
 	   (setf (donjon-yoko map) (+ *yoko* 8)
 		 (donjon-tate map) (+ *tate* 2))
 	   (setf (donjon-yoko map) *yoko*
 		 (donjon-tate map) *tate*))
+    (setf (donjon-map map) (make-array (list (donjon-tate map) (donjon-yoko map))));;マップ配列作成
+    (init-map (donjon-map map) (donjon-tate map) (donjon-yoko map)) ;;マップ初期化
+    (setf (donjon-stop-list map) nil)
+    (cond
+      ((= (player-map p) 100)
+       (set-map map p *map100*))
+      (t
        (setf x (random (floor (donjon-yoko map) 2))
 	     y (random (floor (donjon-tate map) 2))
 	     startx (+ (* x 2) 1)
