@@ -31,6 +31,7 @@
   (exp 0)
   (buki '("なし" 0 0 0))
   (msg nil)
+  (drop nil)
   (monster-num 0))
 
 (defstruct donjon
@@ -71,6 +72,8 @@
   (when (player-dead p)
     (game-over-message p))
   (when (monsters-dead)
+    (if (player-drop p)
+	(yote1-drop p))
     (loop while (>= (player-exp p) *lv-exp*)
 	  do (scr-format "「レ ベ ル ア ッ プ ！ ！」~%")
 	     (incf (player-level p))
@@ -290,7 +293,10 @@
   (health (randval (+ 10 *monster-level*)))
   (damage  0))
 
-(defun yote1-drop ()
+(defun yote1-drop-flag (p)
+  (setf (player-drop p) t))
+
+(defun yote1-drop (p)
   (let ((item (assoc "メタルヨテイチの剣" *event-buki* :test #'equal)))
     (scr-format "「~aを拾った！装備しますか？」(yes=z or no=x)~%" (first item))
     (scr-format "現在の装備品：~a 攻撃力:~d HP:~d 素早さ:~d~%"
@@ -300,7 +306,8 @@
 		(first item) (second item) (third item) (fourth item))
     (case (read-command-char)
       (z (equip-buki item p))
-      (otherwise (scr-format "~aを捨てた。~%" (first item))))))
+      (otherwise (scr-format "~aを捨てた。~%" (first item))))
+    (setf (player-drop p) nil)))
 
 (defmethod monster-hit2 (p m x)
   (decf (monster-health m) x)
@@ -317,11 +324,7 @@
 	(hydra
 	 (incf (player-exp p) 4))
 	(brigand
-	 (incf (player-exp p) 5))
-	(yote1
-	 (if (= 1 (random 100))
-	     (yote1-drop))
-	 (incf (player-exp p) 100)))))
+	 (incf (player-exp p) 5)))))
 
 
 (defmethod monster-attack (m p))
@@ -399,7 +402,9 @@
   (decf (monster-health m))
   (incf (monster-damage m))
   (if (monster-dead m)
-      (progn (incf (player-exp p) 100))))
+      (progn (incf (player-exp p) 100)
+	     (if (= 1 (random 100))
+		 (yote1-drop-flag p)))))
 
 ;;-------------------オーク------------------------------
 (defstruct (orc (:include monster))
