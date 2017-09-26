@@ -112,6 +112,13 @@
 	     starty (+ (* y 2) 1))
        (setf (aref (donjon-map map) starty startx) 0) ;;初期位置を通路にする
        (recursion starty startx map) ;;迷路生成
+       (loop until (<= 2 (length (donjon-stop-list map)))
+             do
+             ;; 行き止まりが 1 つしか無かったのでやりなおし
+             (init-map (donjon-map map) (donjon-tate map) (donjon-yoko map))
+             (setf (donjon-stop-list map) nil)
+             (setf (aref (donjon-map map) starty startx) 0)
+             (recursion starty startx map))
        (setf (aref (donjon-map map) starty startx) 1) ;;主人公の位置
        (setf (player-posy p) starty
 	     (player-posx p) startx) ;;初期位置
