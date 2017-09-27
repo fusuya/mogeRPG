@@ -72,12 +72,13 @@
 	  (push (list y x) (donjon-stop-list map)) ;;行き止まりの座標リスト
 	  (setf (aref (donjon-map map) y x) 3)))))
 
+;;numとは異なるlen内の乱数を返す((diff-num 0 1)だと無限ループになる)
 (defun diff-num (num len)
   (let ((hoge (random len)))
     (if (= hoge num)
 	(diff-num num len)
 	hoge)))
-
+;;マップにボスと階段をセット
 (defun set-boss-kaidan (map boss-num)
   (let* ((len (length (donjon-stop-list map)))
 	 (k (random len)) (b (diff-num k len))
@@ -94,7 +95,7 @@
 	 (startx 0)
 	 (y 0) 
 	 (starty 0))
-    (if (= (player-map p) 50);;ボスマップは広くする
+    (if (= (player-map p) 50);;50階ボスマップは広くする
 	   (setf (donjon-yoko map) (+ *yoko* 8)
 		 (donjon-tate map) (+ *tate* 2))
 	   (setf (donjon-yoko map) *yoko*
@@ -103,9 +104,10 @@
     (init-map (donjon-map map) (donjon-tate map) (donjon-yoko map)) ;;マップ初期化
     (setf (donjon-stop-list map) nil)
     (cond
-      ((= (player-map p) 100)
+      ((= (player-map p) 100) ;; 100階は固定マップ
        (set-map map p *map100*))
       (t
+       ;;奇数座標を初期位置にする
        (setf x (random (floor (donjon-yoko map) 2))
 	     y (random (floor (donjon-tate map) 2))
 	     startx (+ (* x 2) 1)
@@ -125,8 +127,6 @@
        (cond
 	 ((= (player-map p) 50)
 	  (set-boss-kaidan map 7))
-	 ((= (player-map p) 100)
-	  (set-boss-kaidan map 5))
 	 (t (set-boss-kaidan map 0)))))))
     ;;(d-map-map mapn)))
     ;;(test-show-map (d-map-map mapn))))
