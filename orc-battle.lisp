@@ -59,75 +59,63 @@
     (1 (main))
     (2 nil)
     (otherwise (game-over-message p))))
+;;戦闘終了後レベルアップ
+(defun level-up (p)
+  (loop while (>= (player-exp p) *lv-exp*) do
+    (scr-format "「レ ベ ル ア ッ プ ！ ！」~%")
+    (incf (player-level p))
+    (incf (player-maxhp p) 3)
+    (incf (player-maxagi p) 1)
+    (incf (player-maxstr p) 1)
+    (setf (player-hp p) (player-maxhp p)
+	  (player-agi p) (player-maxagi p)
+	  (player-str p) (player-maxstr p)
+	  (player-exp p) (- (player-exp p) *lv-exp*))
+    (incf *lv-exp* 10)))
+;;戦闘終了後アイテム入手
+(defun item-drop? (p)
+  (dolist (item (player-drop p))
+    (let ((buki (assoc item *event-buki* :test #'equal)))
+      (cond
+	(buki (equip? p buki))
+	((string= item "ハンマー")
+	 (scr-format "「ハンマーを拾った！」~%")
+	 (incf (player-hammer p)))
+	((string= item "回復薬")
+	 (scr-format "「回復薬を拾った！」~%")
+	 (incf (player-heal p))))))
+  (setf (player-drop p) nil)) ;;ドロップ品を消す
 ;;バトル開始
 (defun orc-battle (p)
-  ;;(scr-format "~%敵が現れた！！~%")
-  (init-monsters p)
-  ;;(init-player)
+  (cond ;;モンスターズ作成
+    ((= *boss?* 1) ;;ラスボス
+     (boss-monsters p 0))
+    ((= *boss?* 2) ;;中ボス
+     (boss-monsters p 1))
+    ((= *boss?* 0) ;;雑魚
+     (init-monsters p)))
   (game-loop p)
   (gamen-clear)
   (show-monsters2)
-  (setf *battle?* nil)
   (scr-format "~%~%")
   (when (player-dead p)
     (game-over-message p))
   (when (monsters-dead)
-    (if (player-drop p)
-	(yote1-drop p))
-    (loop while (>= (player-exp p) *lv-exp*)
-	  do (scr-format "「レ ベ ル ア ッ プ ！ ！」~%")
-	     (incf (player-level p))
-	     (incf (player-maxhp p) 3)
-	     (incf (player-maxagi p) 1)
-	     (incf (player-maxstr p) 1)
-	     (setf (player-hp p) (player-maxhp p)
-		   (player-agi p) (player-maxagi p)
-		   (player-str p) (player-maxstr p)
-		   (player-exp p) (- (player-exp p) *lv-exp*))
-	     (incf *lv-exp* 10))
+    (item-drop? p) ;;アイテム入手処理
+    (level-up p) ;;レベルアップ処理
+    (cond
+      ((= *boss?* 1) (setf *end* 1))
+      ((= *boss?* 2) (setf *ha2ne2* t)))
     (scr-format "「大 勝 利 ！」~%~%")
     (scr-format "次へ = z")
-    (read-command-char)))
-;;ボスバトル
-(defun boss-battle (p)
-  (scr-format "~%もげぞうが現れた！！~%")
-  (boss-monsters p 0)
-  ;;(init-player)
-  (game-loop p)
-  (setf *battle?* nil)
-  (when (player-dead p)
-    (game-over-message p))
-  (when (monsters-dead)
-    (scr-format "「大勝利！」~%~%")
-    (setf *end* 1)))
-;;ハツネツバトル
-(defun ha2ne2-battle (p)
-  (scr-format "~%ハツネツエリアが現れた！！~%")
-  (boss-monsters p 1)
-  ;;(init-player)
-  (game-loop p)
-  (setf *battle?* nil)
-  (when (player-dead p)
-    (game-over-message p))
-  (when (monsters-dead)
-    (setf *boss?* 0
-	  *ha2ne2* t)
-    (scr-format "「大勝利！」~%")
-    (scr-format "「ハツネツの剣を拾った！装備しますか？」(yes=z or no=x)~%")
-    (let ((item (assoc "ハツネツの剣" *event-buki* :test #'equal)))
-      (scr-format "現在の装備品：~a 攻撃力:~d HP:~d 素早さ:~d~%"
-		  (first (player-buki p)) (second (player-buki p))
-		  (third (player-buki p)) (fourth (player-buki p)))
-      (scr-format "発見した装備：~a 攻撃力:~d HP:~d 素早さ:~d~%"
-		  (first item) (second item) (third item) (fourth item))
-      (case (read-command-char)
-        (z (equip-buki item p))
-        (otherwise (scr-format "ハツネツの剣を捨てた。~%"))))))
+    (read-command-char))
+  ;;バトルフラグとボスフラグを初期化
+  (setf *battle?* nil
+	*boss?* 0))
 
 ;;バトル時、プレイヤーが死ぬかモンスターが全滅するまでループ
 (defun game-loop (p)
   (unless (or (player-dead p) (monsters-dead))
-    
     (dotimes (k (1+ (truncate (/ (max 0 (player-agi p)) 15))))
       (unless (monsters-dead)
 	(gamen-clear)
@@ -159,8 +147,6 @@
 ;;
 (defun atack-p (p x)
   (let ((m (pick-monster p)))
-    ;;(scr-fresh-line)
-    ;;(scr-format "-------------あなたの攻撃--------------~%")
     (monster-hit2 p m x)))
 ;;攻撃方法
 (defun player-attack (p)
@@ -178,14 +164,11 @@
 	 (unless (monsters-dead)
 	   (atack-p p x))))
     (c
-     ;;(scr-fresh-line)
-     ;;(scr-format "-------------あなたの攻撃--------------~%")
      (dotimes (x (1+ (randval (truncate (/ (player-str p) 3)))))
        (unless (monsters-dead)
 	 (monster-hit2 p (random-monster) 1))))
     (v
-     (scr-fresh-line)
-     (scr-format "ぼけ〜~%"))
+     (scr-fresh-line))
     (q (use-heal p))
     (otherwise
      (scr-format "z,x,c,v,qの中から選んでください！~%")
@@ -293,21 +276,20 @@
   (health (randval (+ 10 *monster-level*)))
   (damage  0))
 
-(defun yote1-drop-flag (p)
-  (setf (player-drop p) t))
 
 (defun yote1-drop (p)
-  (let ((item (assoc "メタルヨテイチの剣" *event-buki* :test #'equal)))
-    (scr-format "「~aを拾った！装備しますか？」(yes=z or no=x)~%" (first item))
-    (scr-format "現在の装備品：~a 攻撃力:~d HP:~d 素早さ:~d~%"
-		(first (player-buki p)) (second (player-buki p))
-		(third (player-buki p)) (fourth (player-buki p)))
-    (scr-format "発見した装備：~a 攻撃力:~d HP:~d 素早さ:~d~%"
-		(first item) (second item) (third item) (fourth item))
-    (case (read-command-char)
-      (z (equip-buki item p))
-      (otherwise (scr-format "~aを捨てた。~%" (first item))))
-    (setf (player-drop p) nil)))
+ (if (= 1 (random 100))
+      (push "メタルヨテイチの剣" (player-drop p))))
+(defun ha2ne2-drop (p)
+  (if (= 0 (random 10))
+      (push "ハツネツの剣" (player-drop p))))
+
+(defun orc-drop (p)
+  (if (= 1 (random 10))
+      (push "ハンマー" (player-drop p))))
+(defun slime-drop (p)
+  (if (= 1 (random 10))
+      (push "回復薬" (player-drop p))))
 
 (defmethod monster-hit2 (p m x)
   (decf (monster-health m) x)
@@ -316,10 +298,13 @@
   (if (monster-dead m)
       (case (type-of m)
         (ha2ne2
+	 (ha2ne2-drop p)
 	 (incf (player-exp p) 99))
 	(orc
+	 (orc-drop p)
 	 (incf (player-exp p) 2))
 	(slime-mold
+	 (slime-drop p)
 	 (incf (player-exp p) 3))
 	(hydra
 	 (incf (player-exp p) 4))
@@ -403,8 +388,7 @@
   (incf (monster-damage m))
   (if (monster-dead m)
       (progn (incf (player-exp p) 100)
-	     (if (= 1 (random 100))
-		 (yote1-drop-flag p)))))
+	     (yote1-drop p))))
 
 ;;-------------------オーク------------------------------
 (defstruct (orc (:include monster))
@@ -584,34 +568,30 @@
 	    (4 (scr-format " 暗:見えてない場所~%"))
 	    (otherwise (scr-fresh-line)))))))
 |#
-
+;;エンディング
+(defun ending ()
+  (let* ((ss (floor (- (get-internal-real-time) *start-time*) 1000))
+	 (h (floor ss 3600))
+	 (m (floor (mod ss 3600) 60))
+	 (s (mod ss 60)))
+    (if *ha2ne2*
+	(scr-format "~%「あなたは見事もげぞうの迷宮を完全攻略した！」~%")
+	(progn (scr-format "~%「もげぞうを倒したが、逃したハツネツエリアが新たな迷宮を作り出した・・・」~%")
+	       (scr-format "「が、それはまた別のお話。」~%")))
+    (scr-format "クリアタイムは~2,'0d:~2,'0d:~2,'0d でした！~%" h m s)
+    (ranking-dialog ss)
+    (scr-format "もう一度挑戦しますか？(yes=1 or no=2)~%")
+    (case (read-command-char)
+      (1 (main)))))
 ;;プレイヤーが死ぬか先頭に入るまでループ
 (defun main-game-loop (map p)
   (unless (player-dead p)
     (map-move map p)
     (if *battle?*
-        (cond
-          ((= *boss?* 1)
-            (boss-battle p))
-          ((= *boss?* 2)
-           (ha2ne2-battle p))
-          ((= *boss?* 0)
-            (orc-battle p))))
+	(orc-battle p))
     (cond
       ((= *end* 1)
-       (let* ((ss (floor (- (get-internal-real-time) *start-time*) 1000))
-	      (h (floor ss 3600))
-	      (m (floor (mod ss 3600) 60))
-	      (s (mod ss 60)))
-	 (if *ha2ne2*
-	     (scr-format "~%「あなたは見事もげぞうの迷宮を完全攻略した！」~%")
-	     (scr-format "~%「もげぞうを倒したが、逃したハツネツエリアが新たな迷宮を作り出した・・・」~%
-「が、それはまた別のお話。」~%"))
-	 (scr-format "クリアタイムは~2,'0d:~2,'0d:~2,'0d でした！~%" h m s)
-	 (ranking-dialog ss)
-	 (scr-format "もう一度挑戦しますか？(yes=1 or no=2)~%"))
-       (case (read-command-char)
-         (1 (main))))
+       (ending))
       ((= *end* 0)
        (main-game-loop map p)))))
 ;;ゲーム開始
@@ -649,23 +629,22 @@
 
 
 ;;見つけた武器を装備するか
-(defun equip? (p item-a)
-  (let ((item item-a));;(assoc item-a *buki* :test #'equal)))
-    (scr-format "「~aを見つけた」~%" (first item))
-    (scr-format "現在の装備品：~a 攻撃力:~d HP:~d 素早さ:~d~%"
-		(first (player-buki p)) (second (player-buki p))
-		(third (player-buki p)) (fourth (player-buki p)))
-    (scr-format "発見した装備：~a 攻撃力:~d HP:~d 素早さ:~d~%"
-		(first item) (second item) (third item) (fourth item))
-    (scr-format "「装備しますか？」(yes=z or no=x)~%")
-    (case (read-command-char)
-      (z
-       (scr-format "「~aを装備した。」~%" (first item))
-       (equip-buki item p))
-      (x
-       (scr-format "「~aを見なかったことにした。」~%" (first item)))
-      (otherwise
-       (equip? p item-a)))))
+(defun equip? (p item)
+  (scr-format "「~aを見つけた」~%" (first item))
+  (scr-format "現在の装備品：~a 攻撃力:~d HP:~d 素早さ:~d~%"
+	      (first (player-buki p)) (second (player-buki p))
+	      (third (player-buki p)) (fourth (player-buki p)))
+  (scr-format "発見した装備：~a 攻撃力:~d HP:~d 素早さ:~d~%"
+	      (first item) (second item) (third item) (fourth item))
+  (scr-format "「装備しますか？」(yes=z or no=x)~%")
+  (case (read-command-char)
+    (z
+     (scr-format "「~aを装備した。」~%" (first item))
+     (equip-buki item p))
+    (x
+     (scr-format "「~aを見なかったことにした。」~%" (first item)))
+    (otherwise
+     (equip? p item))))
 
 (defun hummer-get (p)
   (setf (player-msg p) "「ハンマーを見つけた。」")
@@ -693,7 +672,7 @@
     (car (nth (rnd-pick 0 rnd lst1 len) lst))))
 
       
-;; '(4 3 2 1 1) → '(1 4 3 2 1)→'(1 1 4 3 2) '(1 1 1 4 3)
+;;*copy-buki*の確率の部分をずらす
 (defun omomin-zurashi (lst)
   (let ((buki (mapcar #'car lst))
 	(omomi (mapcar #'cdr lst)))
@@ -762,10 +741,13 @@
     (2 ;;くだり階段
      (incf (player-map p))
      (maze map p)
+     ;;２階降りるごとにハンマーもらえる
      (if (= (mod (player-map p) 2) 0)
 	 (incf (player-hammer p)))
+     ;;５階降りるごとに宝箱の確率変わる
      (if (= (mod (player-map p) 5) 0)
 	 (setf *copy-buki* (omomin-zurashi *copy-buki*)))
+     ;;７階降りるごとに敵のレベル上がる
      (if (= (mod (player-map p) 7) 0)
 	 (incf *monster-level*)))
     (3 ;;宝箱
