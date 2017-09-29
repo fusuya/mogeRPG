@@ -32,10 +32,11 @@
   (buki '("なし" 0 0 0))
   (msg nil)
   (drop nil)
+  (auto-heal nil)
   (monster-num 0))
 
 (defstruct donjon
-  (map nil) ;; (make-array (list *tate* *yoko*))) ;;マップ
+  (map nil)  ;;マップ
   (tate 11)
   (yoko 11)
   (stop-list nil)) ;;行き止まりリスト
@@ -51,14 +52,20 @@
 	*ha2ne2* nil
 	*copy-buki* (copy-tree *buki-d*)))
 
-(defun game-over-message (p)
-  (scr-format "Game Over.~%")
-  (scr-format "あなたは地下~d階で力尽きた。~%" (player-map p))
+
+(defun continue-message ()
   (scr-format "もう一度挑戦しますか？(yes=1 or no=2)~%")
   (case (read-command-char)
     (1 (main))
     (2 nil)
-    (otherwise (game-over-message p))))
+    (otherwise (continue-message))))
+
+(defun game-over-message (p)
+  (scr-format "Game Over.~%")
+  (scr-format "あなたは地下~d階で力尽きた。~%" (player-map p))
+  (continue-message))
+ 
+  
 ;;戦闘終了後レベルアップ
 (defun level-up (p)
   (loop while (>= (player-exp p) *lv-exp*) do
@@ -83,8 +90,8 @@
 	 (incf (player-hammer p)))
 	((string= item "回復薬")
 	 (scr-format "「回復薬を拾った！」~%")
-	 (incf (player-heal p))))))
-  (setf (player-drop p) nil)) ;;ドロップ品を消す
+	 (incf (player-heal p))))
+      (setf (player-drop p) nil)))) ;;ドロップ品を消す
 ;;バトル開始
 (defun orc-battle (p)
   (cond ;;モンスターズ作成
@@ -94,25 +101,32 @@
      (boss-monsters p 1))
     ((= *boss?* 0) ;;雑魚
      (init-monsters p)))
-  (game-loop p)
+  (game-loop p) ;;バトルループ
   (gamen-clear)
   (show-monsters2)
   (scr-format "~%~%")
-  (when (player-dead p)
-    (game-over-message p))
-  (when (monsters-dead)
-    (item-drop? p) ;;アイテム入手処理
-    (level-up p) ;;レベルアップ処理
-    (cond
-      ((= *boss?* 1) (setf *end* 1))
-      ((= *boss?* 2) (setf *ha2ne2* t)))
-    (scr-format "「大 勝 利 ！」~%~%")
-    (scr-format "次へ = z")
-    (read-command-char))
-  ;;バトルフラグとボスフラグを初期化
-  (setf *battle?* nil
-	*boss?* 0))
-
+  (cond
+    ((player-dead p) ;;プレイヤーが死んだとき
+     (game-over-message p)
+     (setf *end* 2))
+    (t ;;(monsters-dead)
+     (item-drop? p) ;;アイテム入手処理
+     (level-up p) ;;レベルアップ処理
+     (cond
+       ((= *boss?* 1) (setf *end* 1))
+       ((= *boss?* 2) (setf *ha2ne2* t)))
+     (scr-format "「大 勝 利 ！」~%~%")
+     (scr-format "次へ = z")
+     (read-command-char)
+     ;;バトルフラグとボスフラグを初期化
+     (setf *battle?* nil
+	   *boss?* 0))))
+;;オートヒール発動
+(defun use-auto-heal (p)
+  (use-heal p)
+  (scr-format "HPが最大HPの~d%以下だったので回復薬を使いました。~%" (player-auto-heal p))
+  (scr-format "次へ = z")
+     (read-command-char))
 ;;バトル時、プレイヤーが死ぬかモンスターが全滅するまでループ
 (defun game-loop (p)
   (unless (or (player-dead p) (monsters-dead))
@@ -121,7 +135,10 @@
 	(gamen-clear)
 	(show-monsters2)
 	(show-player p)
-        (player-attack p)))
+	(if (and (player-auto-heal p) (> (player-heal p) 0)
+		 (>= (* (player-maxhp p) (/ (player-auto-heal p) 100)) (player-hp p)))
+	    (use-auto-heal p)
+	    (player-attack p))))
     (cond 
       ((null (monsters-dead))
        (gamen-clear)
@@ -143,7 +160,7 @@
 (defun show-player (p)
   (scr-format "~%あなたのステータス:Lv ~d, HP ~d, 素早さ ~d, 力 ~d, exp ~d~%"
           (player-level p) (player-hp p) (player-agi p) (player-str p) (player-exp p)) 
-  (scr-format "持ち物:回復薬 ~d個~%" (player-heal p)))
+  (scr-format "持ち物:回復薬 ~d個,ハンマー~d個~%" (player-heal p) (player-hammer p)))
 ;;
 (defun atack-p (p x)
   (let ((m (pick-monster p)))
@@ -160,7 +177,6 @@
 	 (scr-princ x)
 	 (scr-fresh-line)
 	 (atack-p p x)
-	 (show-monsters2)
 	 (unless (monsters-dead)
 	   (atack-p p x))))
     (c
@@ -174,6 +190,7 @@
      (scr-format "z,x,c,v,qの中から選んでください！~%")
      (player-attack p))))
 
+;;n内の１以上の乱数
 (defun randval (n)
   (1+ (random (max 1 n))))
 
@@ -187,7 +204,7 @@
 (defun ascii->number (x)
   (if (null (numberp x))
       (- (char-code (char (symbol-name x) 0)) 64)))
-
+;;生きている一番上の敵を選択
 (defun auto-pick-monster (num)
   (let ((m (aref *monsters* num)))
     (if (null (monster-dead m))
@@ -227,7 +244,7 @@
                    (t (make-yote1 :health 3)))))
 	     (make-array (setf (player-monster-num p)
 			       (randval (+ *monster-num* (floor (player-level p) 4))))))))
-;;配列の０番目にボス、あとはランダムなモンスター
+;;配列の０番目にボス、あとはランダムなモンスター(m=0,もげぞう m=1,ハツネツ)
 (defun boss-monsters (p m)
   (let ((hoge 0))
     (setf *monsters*
@@ -264,8 +281,9 @@
 	   (if (monster-dead m)
 	       (if (> (monster-damage m) 0)
 		   (scr-format "**死亡**   ~d のダメージを与え倒した！~%" (monster-damage m))
-		   (scr-format "**死亡**~%")) 
-	       (progn (monster-show m)
+		   (scr-format "**死亡**~%"))
+	       (progn (scr-format "(HP=~d) " (monster-health m))
+		      (monster-show m)
 		      (if (> (monster-damage m) 0)
 			  (scr-format "   ~d のダメージを与えた！~%" (monster-damage m))
 			  (scr-fresh-line))))
@@ -276,9 +294,9 @@
   (health (randval (+ 10 *monster-level*)))
   (damage  0))
 
-
+;;-----------------敵からのアイテムドロップ-------------------------
 (defun yote1-drop (p)
- (if (= 1 (random 100))
+  (if (= 1 (random 100))
       (push "メタルヨテイチの剣" (player-drop p))))
 (defun ha2ne2-drop (p)
   (if (= 0 (random 10))
@@ -288,9 +306,10 @@
   (if (= 1 (random 10))
       (push "ハンマー" (player-drop p))))
 (defun slime-drop (p)
-  (if (= 1 (random 10))
+  (if (= 1 (random 20))
       (push "回復薬" (player-drop p))))
-
+;;-----------------------------------------------------------------
+;;モンスターの受けたダメージ処理
 (defmethod monster-hit2 (p m x)
   (decf (monster-health m) x)
   (incf (monster-damage m) x)
@@ -313,7 +332,7 @@
 
 
 (defmethod monster-attack (m p))
-;;中ボス
+;;--------中ボス------------------------------------------------------------------------
 (defstruct (ha2ne2 (:include monster)) (h-atk 8))
 (defmethod monster-show ((m ha2ne2))
   (scr-princ "ボス：ハツネツエリア"))
@@ -337,7 +356,7 @@
        (scr-format "「ハツネツが料理してご飯を食べている。ハツネツのHPが~d回復した！」~%" x)
        (incf (monster-health m) x)))))
 
-;;ボス
+;;--------ボス------------------------------------------------------------------------
 (defstruct (boss (:include monster)) (boss-atk 10))
 (defmethod monster-show ((m boss))
   (scr-princ "ボス：もげぞう"))
@@ -368,7 +387,8 @@
 	 (if (>= dame-str 0)
 	     (decf (player-str p) x)
 	     (setf (player-str p) 0)))))))
-;;-------------------メタル------------------------------
+
+;;-------------------メタルヨテイチ--------------------------------------------------
 (defstruct (yote1 (:include monster))
   (atk    (randval (+ 10 *monster-level*))))
 ;;(push #'make-yote1 *monster-builders*)
@@ -390,7 +410,7 @@
       (progn (incf (player-exp p) 100)
 	     (yote1-drop p))))
 
-;;-------------------オーク------------------------------
+;;-------------------オーク---------------------------------------------------------
 (defstruct (orc (:include monster))
   (club-level (randval (+ 8 *monster-level*)))
   (name "オーク"))
@@ -495,13 +515,40 @@
 	   (scr-format "は鞭であなたの腕を攻撃してきた！力が ~d 減った！~%" damage)
 	   (decf (player-str p) damage)))))
 
-
+;;-----------------------マップ------------------------------------------------------------
 ;;---------------------------------------------------------------------------------------
 ;;マップ移動
 (defun show-msg (p)
   (if (player-msg p)
       (scr-format "~a~%" (player-msg p)))
   (setf (player-msg p) nil))
+;;オート回復薬メッセージ
+(defun show-auto-heal (p)
+  (scr-format "オート回復薬 = ~a~%"
+	      (if (player-auto-heal p)
+		  "ON" "OFF")))
+;;オート回復薬設定
+(defun auto-heal-config (p)
+  (gamen-clear)
+  ;; now = 現在の設定番号
+  (let ((now (if (null (player-auto-heal p))
+		 5
+		 (floor (player-auto-heal p) 10))))
+    (scr-format "---------------オート回復薬の設定---------------~%")
+    (scr-format "現在の設定 : ~d番~%" now)
+    (scr-format "1 : HPが10%以下で回復~%")
+    (scr-format "2 : HPが20%以下で回復~%")
+    (scr-format "3 : HPが30%以下で回復~%")
+    (scr-format "4 : HPが40%以下で回復~%")
+    (scr-format "5 : OFF~%")
+    (scr-format "設定したい数字を選んでください~%")
+    (case (read-command-char)
+      (1 (setf (player-auto-heal p) 10))
+      (2 (setf (player-auto-heal p) 20))
+      (3 (setf (player-auto-heal p) 30))
+      (4 (setf (player-auto-heal p) 40))
+      (5 (setf (player-auto-heal p) nil))
+      (otherwise (auto-heal-config p)))))
 
 (defun map-type (num)
   (case num
@@ -520,10 +567,9 @@
 (defun show-map (map p)
   (gamen-clear)
   (scr-format "地下~d階~%" (player-map p))
-  (scr-format "現在のステータス Lv ~d, HP ~d, 素早さ ~d, 力 ~d, exp ~d~%" (player-level p) (player-hp p)
-          (player-agi p) (player-str p) (player-exp p))
+  (show-player p)
   (scr-format "現在の武器:~a~%" (first (player-buki p)))
-  (scr-format "持ち物:回復薬 ~d個 ハンマー~d個~%" (player-heal p) (player-hammer p))
+  (show-auto-heal p)
   (loop for i from 0 below (donjon-tate map) do
     (loop for j from 0 below (donjon-yoko map) do
       (scr-format (map-type (aref (donjon-map map) i j)))
@@ -580,34 +626,31 @@
 	       (scr-format "「が、それはまた別のお話。」~%")))
     (scr-format "クリアタイムは~2,'0d:~2,'0d:~2,'0d でした！~%" h m s)
     (ranking-dialog ss)
-    (scr-format "もう一度挑戦しますか？(yes=1 or no=2)~%")
-    (case (read-command-char)
-      (1 (main)))))
-;;プレイヤーが死ぬか先頭に入るまでループ
+    (continue-message)))
+;;プレイヤーが死ぬか戦闘に入るか*end*=2になるまでループ
 (defun main-game-loop (map p)
-  (unless (player-dead p)
+  (unless (or (= *end* 2) (player-dead p))
     (map-move map p)
     (if *battle?*
 	(orc-battle p))
     (cond
-      ((= *end* 1)
+      ((= *end* 1) ;;ゲームクリア
        (ending))
-      ((= *end* 0)
+      ((= *end* 0) ;;ゲームループ
        (main-game-loop map p)))))
 ;;ゲーム開始
 (defun main ()
   (init-charms)
   (setf *random-state* (make-random-state t))
-  (let* ((p (make-player))
+  (let* ((p (make-player)) 
 	 (map (make-donjon)))
-    (init-data)
-    (init-monsters p)
-    (maze map p)
+    (init-data) ;;データ初期化
+    (maze map p) ;;マップ生成
     (main-game-loop map p)))
 
 ;;壁破壊
 (defun kabe-break (map p y x)
-  (scr-format "「ハンマーで壁を壊しますか？」[yes=z or no=x]:~%")
+  (scr-format "「ハンマーで壁を壊しますか？」[yes=z or no= any key]:~%")
   (case (read-command-char)
     (z
       (if (>= (random 10) 3)
@@ -656,22 +699,22 @@
 
 
 
-;;アイテム
+;;重み付け抽選-----------------------------------------------
 (defun rnd-pick (i rnd lst len)
   (if (= i len)
       (1- i)
       (if (< rnd (nth i lst))
 	  i
 	  (rnd-pick (1+ i) (- rnd (nth i lst)) lst len))))
-;;重み付け抽選
+;;lst = *copy-buki*
 (defun weightpick (lst)
   (let* ((lst1 (mapcar #'cdr lst))
 	 (total-weight (apply #'+ lst1))
 	 (len (length lst1))
 	 (rnd (random total-weight)))
     (car (nth (rnd-pick 0 rnd lst1 len) lst))))
-
-      
+;;------------------------------------------------------------
+;; lst = *copy-buki*
 ;;*copy-buki*の確率の部分をずらす
 (defun omomin-zurashi (lst)
   (let ((buki (mapcar #'car lst))
@@ -688,18 +731,18 @@
     hoge))
 (defun test-hoge ()
   (let ((x 1))
-	   (loop for hoge from 0 to 53
-		 collect x
-		 do (incf x 1))))
+     (loop for hoge from 0 to 53)
+     collect x
+     do (incf x 1)))
 |#
 ;;---------------------------------------------
 ;;武器ゲット２ 全アイテムからランダム
 (defun item-get2 (p)
-  (case (random 5)
-    ((0 1 2)
+  (case (random 7)
+    ((0 1 2 5) ;;武器ゲット
      (equip? p (weightpick *copy-buki*)))
-    (3 (hummer-get p))
-    (4 (kusuri-get p))))
+    ((3 6) (hummer-get p)) ;;ハンマーゲット
+    (4 (kusuri-get p)))) ;;回復薬ゲット
 
 ;;プレイヤーの場所更新
 (defun update-player-pos (p x y map)
