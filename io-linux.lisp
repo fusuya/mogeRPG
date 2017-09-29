@@ -72,6 +72,7 @@
       ((d l 6) (update-map map p 0 1))
       ((a h 4) (update-map map p 0 -1))
       (q (use-heal p))
+      (f (auto-heal-config p))
       (r (setf *end* 2))
       (otherwise
        (scr-format "w,a,s,d,q,rの中から選んでください！~%")))
@@ -79,6 +80,7 @@
     (map-move map p)))
 
 (defun show-map-key ()
+  (scr-format "オート回復薬設定[f]~%")
   (scr-format "どちらに移動しますか？[↑ ]上 [↓ ]下 [→ ]右 [← ]左 [q]薬を使う [r]終わる: ~%"))
 
 (defun gamen-clear ()
