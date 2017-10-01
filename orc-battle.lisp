@@ -31,14 +31,14 @@
   (exp 0)
   (buki '("なし" 0 0 0))
   (msg nil)
-  (drop nil)
+  (drop nil) ;;敵からのドロップ品一時保管場所
   (auto-heal nil)
-  (monster-num 0))
+  (monster-num 0)) ;;戦闘時の敵の総数
 
 (defstruct donjon
   (map nil)  ;;マップ
-  (tate 11)
-  (yoko 11)
+  (tate 11)  ;;縦幅
+  (yoko 11)  ;;横幅
   (stop-list nil)) ;;行き止まりリスト
 
 (defun init-data ()
@@ -52,14 +52,14 @@
 	*ha2ne2* nil
 	*copy-buki* (copy-tree *buki-d*)))
 
-
+;;コンティニューメッセージ
 (defun continue-message ()
   (scr-format "もう一度挑戦しますか？(yes=1 or no=2)~%")
   (case (read-command-char)
     (1 (main))
     (2 nil)
     (otherwise (continue-message))))
-
+;;ゲームオーバーメッセージ
 (defun game-over-message (p)
   (scr-format "Game Over.~%")
   (scr-format "あなたは地下~d階で力尽きた。~%" (player-map p))
@@ -109,12 +109,12 @@
     ((player-dead p) ;;プレイヤーが死んだとき
      (game-over-message p)
      (setf *end* 2))
-    (t ;;(monsters-dead)
+    (t ;;(monsters-dead) 敵を倒したとき
      (item-drop? p) ;;アイテム入手処理
      (level-up p) ;;レベルアップ処理
      (cond
-       ((= *boss?* 1) (setf *end* 1))
-       ((= *boss?* 2) (setf *ha2ne2* t)))
+       ((= *boss?* 1) (setf *end* 1)) ;;ラスボスならエンディングへ
+       ((= *boss?* 2) (setf *ha2ne2* t))) ;;中ボス倒したフラグ
      (scr-format "「大 勝 利 ！」~%~%")
      (scr-format "次へ = z")
      (read-command-char)
@@ -126,7 +126,7 @@
   (use-heal p)
   (scr-format "HPが最大HPの~d%以下だったので回復薬を使いました。~%" (player-auto-heal p))
   (scr-format "次へ = z")
-     (read-command-char))
+  (read-command-char))
 ;;バトル時、プレイヤーが死ぬかモンスターが全滅するまでループ
 (defun game-loop (p)
   (unless (or (player-dead p) (monsters-dead))
@@ -135,6 +135,7 @@
 	(gamen-clear)
 	(show-monsters2)
 	(show-player p)
+	;;オート回復がONになっていて回復薬を一つ以上持っていてオート回復薬の条件にあっていれば
 	(if (and (player-auto-heal p) (> (player-heal p) 0)
 		 (>= (* (player-maxhp p) (/ (player-auto-heal p) 100)) (player-hp p)))
 	    (use-auto-heal p)
@@ -144,7 +145,7 @@
        (gamen-clear)
        (show-monsters2)
        (show-player p)
-       (scr-format "~%-------------------敵のターン--------------------~%")
+       (scr-format "~%------------------------敵のターン------------------------~%")
        (map 'list
             (lambda (m)
               (or (monster-dead m) (monster-attack m p)))
@@ -173,11 +174,10 @@
   (case (read-command-char)
     (z (atack-p p (+ 2 (randval (ash (player-str p) -1)))))
     (x (let ((x (randval (truncate (/ (player-str p) 6)))))
-	 (scr-princ "ダブルスウィングのダメージは ")
-	 (scr-princ x)
-	 (scr-fresh-line)
+	 (scr-format "~%ダブルスウィングのダメージは ~d~%" x)
 	 (atack-p p x)
 	 (unless (monsters-dead)
+           (scr-format "~%2体目のモンスターを選んでください~%")
 	   (atack-p p x))))
     (c
      (dotimes (x (1+ (randval (truncate (/ (player-str p) 3)))))
@@ -299,7 +299,7 @@
   (if (= 1 (random 100))
       (push "メタルヨテイチの剣" (player-drop p))))
 (defun ha2ne2-drop (p)
-  (if (= 0 (random 10))
+  (if (= 0 (random 1)) ;;100%
       (push "ハツネツの剣" (player-drop p))))
 
 (defun orc-drop (p)
@@ -524,9 +524,9 @@
   (setf (player-msg p) nil))
 ;;オート回復薬メッセージ
 (defun show-auto-heal (p)
-  (scr-format "オート回復薬 = ~a~%"
-	      (if (player-auto-heal p)
-		  "ON" "OFF")))
+  (if (null (player-auto-heal p))
+      (scr-format "オート回復薬 = OFF~%")
+      (scr-format "オート回復薬 = HPが~d%以下で回復~%" (player-auto-heal p))))
 ;;オート回復薬設定
 (defun auto-heal-config (p)
   (gamen-clear)
@@ -650,7 +650,7 @@
 
 ;;壁破壊
 (defun kabe-break (map p y x)
-  (scr-format "「ハンマーで壁を壊しますか？」[yes=z or no= any key]:~%")
+  (scr-format "「ハンマーで壁を壊しますか？」[yes=z or no=anykey]:~%")
   (case (read-command-char)
     (z
       (if (>= (random 10) 3)
@@ -720,7 +720,7 @@
   (let ((buki (mapcar #'car lst))
 	(omomi (mapcar #'cdr lst)))
     (setf omomi (butlast omomi))
-    (push 1 omomi)
+    (push 10 omomi)
     (mapcar #'cons buki omomi)))
 ;;テスト用------------------------------------
 #|
