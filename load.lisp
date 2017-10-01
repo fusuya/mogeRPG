@@ -13,7 +13,7 @@
         ;; recklessly-p に t を指定して、後始末(標準出力ストリームのフラッシュ等)が行われないようにする
         (sb-ext:quit :recklessly-p t)))
 |#
-
+;;testhoge
 (main)
 (sb-ext:exit)
 #|
