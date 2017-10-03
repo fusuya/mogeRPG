@@ -36,12 +36,12 @@
     (labels
         ((add-char ()
                    (let ((code (cl-charms/low-level:getch)))
-                     (if (= code 10)
-                         (progn
-                           (cl-charms/low-level:scrl 1)
-                           (flexi-streams:octets-to-string buf :external-format :utf-8))
-                       (progn
-                         (vector-push-extend code buf)
+                     (cond
+		       ((= code 10)
+			(cl-charms/low-level:scrl 1)
+			(flexi-streams:octets-to-string buf :external-format :utf-8))
+		       (t
+			 (vector-push-extend code buf)
                          (add-char))))))
       (add-char))))
 
@@ -85,3 +85,6 @@
 
 (defun gamen-clear ()
   (charms/ll:clear))
+
+(defun endo-win ()
+  (charms/ll:endwin))

@@ -63,22 +63,45 @@
 (defun game-over-message (p)
   (scr-format "Game Over.~%")
   (scr-format "あなたは地下~d階で力尽きた。~%" (player-map p))
+  (ranking-dialog 0)
   (continue-message))
  
   
 ;;戦闘終了後レベルアップ
 (defun level-up (p)
-  (loop while (>= (player-exp p) *lv-exp*) do
-    (scr-format "「レ ベ ル ア ッ プ ！ ！」~%")
-    (incf (player-level p))
-    (incf (player-maxhp p) 3)
-    (incf (player-maxagi p) 1)
-    (incf (player-maxstr p) 1)
-    (setf (player-hp p) (player-maxhp p)
-	  (player-agi p) (player-maxagi p)
-	  (player-str p) (player-maxstr p)
-	  (player-exp p) (- (player-exp p) *lv-exp*))
-    (incf *lv-exp* 10)))
+  (labels ((hoge (n) ;;ポイント振り分け作業
+	     (if (= n 0)
+	       (progn (setf (player-hp p) (player-maxhp p)
+			    (player-str p) (player-maxstr p)
+			    (player-agi p) (player-maxagi p))
+		      (scr-format "1:HP ~d 2:力 ~d 3:素早さ ~d~%"
+				  (player-maxhp p) (player-maxstr p) (player-maxagi p)))
+	       (progn
+		 (scr-format "ポイントを振り分けてください。残り~dポイント~%" n)
+		 (scr-format "(番号を選んでね)~%")
+		 (scr-format "1:HP ~d 2:力 ~d 3:素早さ ~d~%"
+			     (player-maxhp p) (player-maxstr p) (player-maxagi p))
+		 (let ((x (read-command-char)))
+		   (scr-fresh-line)
+		   (case x
+		     (1
+		      (incf (player-maxhp p))
+		      (hoge (1- n)))
+		     (2
+		      (incf (player-maxstr p))
+		      (hoge (1- n)))
+		     (3
+		      (incf (player-maxagi p))
+		      (hoge (1- n)))
+		     (otherwise
+		       (hoge n))))))))
+    (loop while (>= (player-exp p) *lv-exp*) do
+	  (let ((point (randval 3)))
+	    (scr-format "「レベルアップ！ステータスポイントを~d獲得しました。」~%" point)
+	    (hoge point)
+	    (decf (player-exp p) *lv-exp*)
+	    (incf (player-level p))
+	    (incf *lv-exp* 10)))))
 ;;戦闘終了後アイテム入手
 (defun item-drop? (p)
   (dolist (item (player-drop p))
@@ -236,6 +259,7 @@
 	     (lambda (x)
 	       ;;(funcall (nth (random (length *monster-builders*)) *monster-builders*)))
                (let ((y (random 101)))
+		 ;;モンスターの出現率
                  (cond
                    ((<= 0 y 25) (make-orc))
                    ((<= 26 y 50) (make-hydra))
@@ -895,16 +919,23 @@
         (write-ranking (funcall fun ranking)))))
 
 ;; メッセージ message を表示し、ユーザーから 1 あるいは 2 を受け取る。
-;; 1 を受け取れば t を、さもなくば nil を返す。
+;; 1 を受け取れば t を、2を受け取れば nil を返す。それ以外はループ
 (defun yes-no-dialog (message)
   (scr-format "~a(yes=1 or no=2)~%" message)
-  (= 1 (read-command-char)))
+  (case (read-command-char)
+    (1 t)
+    (2 nil)
+    (otherwise (yes-no-dialog message))))
 
 ;; クリア記録 total-seconds をランキングファイルへ登録時のダイアログ。
 (defun ranking-dialog (total-seconds)
   (when (yes-no-dialog "ランキングに登録しますか？")
-    (scr-format "名前を教えてください:~%")
-    (let ((name (read-string)))
+    (gamen-clear)
+    (endo-win)
+    (fresh-line)
+    (format t "~%名前を教えてください：~%")
+    ;;(scr-format "名前を入力してください:~%")
+    (let ((name (read-line)))
       (ranking-transaction
        (lambda (ranking)
          (let ((ranking1 (ranking-update name total-seconds ranking)))
@@ -916,4 +947,5 @@
              (progn
                (scr-format "見事ランクイン！~%")
                (ranking-show ranking1 name)
-               ranking1))))))))
+               ranking1))))))
+    (init-charms)))
