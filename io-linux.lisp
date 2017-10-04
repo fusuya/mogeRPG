@@ -28,8 +28,8 @@
                (and (char<= #\A char) (char<= char #\Z))
                (and (char<= #\0 char) (char<= char #\9)))
               (read-from-string (format nil "~C" (code-char c)))
-            nil))
-      nil)))
+	      nil))
+	nil)))
 
 (defun gets ()
   (let ((buf (make-array 0 :adjustable t :fill-pointer 0)))
@@ -73,6 +73,7 @@
       ((a h 4) (update-map map p 0 -1))
       (q (use-heal p))
       (f (auto-heal-config p))
+      (i (show-item p))
       (r (setf *end* 2))
       (otherwise
        (scr-format "w,a,s,d,q,rの中から選んでください！~%")))
@@ -80,7 +81,7 @@
     (map-move map p)))
 
 (defun show-map-key ()
-  (scr-format "オート回復薬設定[f]~%")
+  (scr-format "[f]オート回復薬設定 [i]持ち物を見る~%")
   (scr-format "どちらに移動しますか？[↑ ]上 [↓ ]下 [→ ]右 [← ]左 [q]薬を使う [r]終わる: ~%"))
 
 (defun gamen-clear ()
@@ -88,3 +89,4 @@
 
 (defun endo-win ()
   (charms/ll:endwin))
+
