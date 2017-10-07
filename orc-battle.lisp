@@ -64,7 +64,7 @@
 (defun game-over-message (p)
   (scr-format "Game Over.~%")
   (scr-format "あなたは地下~d階で力尽きた。~%" (player-map p))
-  (ranking-dialog 0)
+  ;;(ranking-dialog 0) ;;テスト用
   (continue-message))
  
   
