@@ -64,7 +64,7 @@
 (defun game-over-message (p)
   (scr-format "Game Over.~%")
   (scr-format "あなたは地下~d階で力尽きた。~%" (player-map p))
-  ;;(ranking-dialog 0) ;;テスト用
+  ;;(ranking-dialog 0)
   (continue-message))
  
   
@@ -573,7 +573,7 @@
   (gamen-clear)
   (loop for buki in (player-item p)
 	for x from 1 do
-	  (scr-format "~c:~a:力+~2,'0d HP+~2,'0d 素早さ+~2,'0d~%"
+	  (scr-format "[~c]:~a:力+~2,'0d HP+~2,'0d 素早さ+~2,'0d~%"
 		      (number->a x) (minimum-column 18 (first buki)) (second buki)
 		      (third buki) (fourth buki)))
   (scr-format "アルファベットを選ぶと装備します~%")
@@ -585,8 +585,8 @@
 	 (if (not (string= "なし" (first (player-buki p))))
 	     (push (player-buki p) (player-item p)))
 	 (equip-buki buki p)
-	 (setf (player-item p) (remove buki (player-item p) :test #'equal))))
-      ((and (integerp x) (= x 25))
+	 (setf (player-item p) (remove buki (player-item p) :count 1 :test #'equal))))
+      ((and (integerp x) (= x 25)) ;;zキーで戻る
        )
       (t
        (show-item p)))))
@@ -724,7 +724,33 @@
 	(setf (aref map (+ (player-posy p) y) (+ (player-posx p) x)) 0)
 	(setf (aref map (+ (player-posy p) y) (+ (player-posx p) x)) 3))
      (decf (player-hammer p)))))
-     ;;(scr-format "「壁を壊しました。」~%"))))
+;;(scr-format "「壁を壊しました。」~%"))))
+
+;;アイテムを捨てる入れ替える
+(defun throw-item (p item)
+  (gamen-clear)
+  (scr-format "-------------持ち物が一杯です。捨てる武器を選んでください-------------~%")
+  (loop for buki in (player-item p)
+	for x from 1 do
+	  (scr-format "[~c]:~a:力+~2,'0d HP+~2,'0d 素早さ+~2,'0d~%"
+		      (number->a x) (minimum-column 18 (first buki)) (second buki)
+		      (third buki) (fourth buki)))
+  (scr-format "[z]:戻る(拾った武器を捨てる)")
+  (let ((x (ascii->number (read-command-char))))
+    (cond
+      ((and (integerp x) (<= 0 x 19) (< x (length (player-item p))))
+       (setf (nth x (player-item p)) item))
+      ((and (integerp x) (= x 25)) ;;zキーで戻る
+       )
+      (t
+       (throw-item p item)))))
+  
+;;持ち物にアイテム追加
+(defun add-item (p item)
+  (if (> 20 (length (player-item p))) ;;持ち物２０個まで
+      (push item (player-item p))
+      (throw-item p item))) ;;アイテムを入れ替える
+      
 
 ;;武器装備してステータス更新
 (defun equip-buki (item p)
@@ -755,8 +781,8 @@
      (equip-buki item p))
     (x
      (scr-format "「~aを見なかったことにした。」~%" (first item)))
-    (c
-     (push item (player-item p)))
+    (c ;;持ち物に追加
+     (add-item p item))
     (otherwise
      (equip? p item))))
 
