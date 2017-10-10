@@ -245,7 +245,7 @@
       (z (auto-pick-monster 0))
       (otherwise
        (let ((x (ascii->number key)))
-	 (if (not (and (integerp x) (>= x 0) (<= x (player-monster-num p))))
+	 (if (not (and (integerp x) (>= x 0) (< x (player-monster-num p))))
 	     (progn (scr-princ "有効なモンスター番号ではありません。")
 		    (pick-monster p))
 	     (let ((m (aref *monsters* x)))
