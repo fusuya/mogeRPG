@@ -209,9 +209,9 @@
   (<= (player-hp p) 0))
 ;;プレイヤーのステータス表示(バトル時)
 (defun show-player (p)
-  (scr-format "Lv ~d, HP ~d, 素早さ ~d, 力 ~d, exp ~d~%"
-	      (player-level p) (player-hp p) (player-agi p) (player-str p) (player-exp p))
-  (scr-format "持ち物:ハンマー ~d個 回復薬 ~d個~%" (player-hammer p) (player-heal p)))
+  (scr-format "Lv ~d, HP ~d/~d 力 ~d/~d 素早さ ~d/~d ~%"
+	      (player-level p) (player-hp p) (player-maxhp p)  (player-str p) (player-maxstr p)
+	      (player-agi p) (player-maxagi p)))
 ;;cursorより前に生きてるモンスターおるか？
 (defun mae-monster-alive? (cursor)
   (if (> 0 cursor)
@@ -667,8 +667,8 @@
 ;;オート回復薬メッセージ
 (defun show-auto-heal (p)
   (if (null (player-auto-heal p))
-      (scr-format "オート回復薬 = OFF~%")
-      (scr-format "オート回復薬 = HPが~d%以下で回復~%" (player-auto-heal p))))
+      (scr-format "オート回復薬[f] OFF~%")
+      (scr-format "オート回復薬[f] HPが~d%以下で回復~%" (player-auto-heal p))))
 
 ;;文字幅取得
 (defun moge-char-width (char)
@@ -748,7 +748,7 @@
 	 (setf item-list (remove buki item-list :count 1 :test #'equal))
 	 (buki-gousei3 p item1 buki item-list)))
       ((and (integerp x) (= x 25)) ;;zキーで1つめの武器を選ぶとこに戻る
-       (buki-bousei1 p))
+       (buki-gousei1 p))
       (t
        (buki-gousei2 p item1 item-list)))))
 ;;武器合成確認
@@ -842,25 +842,42 @@
 ;;マップ表示
 (defun show-map (map p)
   (gamen-clear)
-  (scr-format "地下~d階~%" (player-map p))
+  (scr-format "地下~d階  " (player-map p))
   (show-player p)
-  (scr-format "現在の武器:~a~%" (first (player-buki p)))
-  (show-auto-heal p)
+  (scr-format "~%")
   (loop for i from 0 below (donjon-tate map) do
     (loop for j from 0 below (donjon-yoko map) do
       (scr-format (map-type (aref (donjon-map map) i j)))
       (if (= j (- (donjon-yoko map) 1))
 	  (case i
-	    (0 (scr-format " 主:プレイヤーの位置~%"))
-	    (2 (scr-format " 宝:宝箱~%"))
-	    (1 (scr-format " 下:下り階段~%"))
-	    (3 (scr-format " 薬:回復薬~%"))
-	    (4 (scr-format " ボ:ボス~%"))
-            (5 (scr-format " イ:イベント~%"))
-            (6 (scr-format " ハ:中ボス~%"))
+	    (0 (scr-format " 武器[i]   ~a~%" (first (player-buki p))))
+            (1 (scr-format " 回復薬    ~d個~%" (player-heal p)))
+            (2 (scr-format " ハンマー  ~d個~%" (player-hammer p)))
+	    (3 (scr-format " Exp       ~d/~d~%" (player-exp p) *lv-exp*))
+            (4 (scr-format " ") (show-auto-heal p))
+	    (6 (scr-format " 薬を使う[q]~%"))
+	    (7 (scr-format " 武器合成[g]~%"))
+ 	    (8 (scr-format " ヘルプ[h]~%"))
+	    (9 (scr-format " 終わる[r]~%"))
 	    (otherwise (scr-fresh-line))))))
-  (show-msg p)
-  (show-map-key))
+  (show-msg p))
+
+(defun show-help ()
+  (gamen-clear)
+  (scr-format "-------マップ記号の意味-------~%")
+  (scr-format " 主:プレイヤーの位置~%")
+  (scr-format " 宝:宝箱~%")
+  (scr-format " 下:下り階段~%")
+  (scr-format " 薬:回復薬~%")
+  (scr-format " ボ:ボス~%")
+  (scr-format " イ:イベント~%")
+  (scr-format " ハ:中ボス~%")
+  (scr-format "~%")
+  (scr-format "-----------------キーバインド------------------~%")
+  (scr-format "[z]:決定           [x]:キャンセル [g]武器合成~%")
+  (scr-format "[i]:持ち物表示     [q]:薬を使う   [r]:ゲーム終了~%")
+  (scr-format "[f]:オート回復設定 [h]:ヘルプを開く~%")
+  (read-command-char))
 #|
 ;;マップ表示 視界制限ver
 (defun show-fog-map (map p)
