@@ -59,29 +59,48 @@
   (cl-charms/low-level:scrollok cl-charms/low-level:*stdscr* 1)
   (cl-charms/low-level:keypad cl-charms/low-level:*stdscr* 1)
   (cl-charms/low-level:raw)
+  (charms/ll:noecho)
   (exit-hooks:add-exit-hook #'cl-charms/low-level:endwin))
 
 ;;移動先選択
 (defun map-move (map p)
   (unless (or *battle?* (= *end* 2))
-    ;;(show-fog-map map p)
+    (cond
+      ((equal (reverse *urawaza*) '(m o g e z o u i s g o d))
+       (urawaza p))
+      ((> (length *urawaza*) 15)
+       (setf *urawaza* nil)))
     (show-map map p)
     (case (read-command-char)
       ((w k 8) (update-map map p -1 0))
-      ((s j 2) (update-map map p 1 0))
-      ((d l 6) (update-map map p 0 1))
+      ((s j 2)
+       (update-map map p 1 0)
+       (push 's *urawaza*))
+      ((d l 6)
+       (update-map map p 0 1)
+       (push 'd *urawaza*))
       ((a h 4) (update-map map p 0 -1))
       (q (use-heal p))
       (f (auto-heal-config p))
-      (i (show-item p))
+      (i
+       (show-item p)
+       (push 'i *urawaza*))
+      (g
+       (buki-gousei1 p)
+       (push 'g *urawaza*))
       (r (setf *end* 2))
+      (m (push 'm *urawaza*))
+      (o (push 'o *urawaza*))
+      (e (push 'e *urawaza*))
+      (z (push 'z *urawaza*))
+      (u (push 'u *urawaza*))
       (otherwise
        (scr-format "w,a,s,d,q,rの中から選んでください！~%")))
 
     (map-move map p)))
 
 (defun show-map-key ()
-  (scr-format "[f]オート回復薬設定 [i]持ち物を見る~%")
+  (scr-format "[f]オート回復薬設定 [i]持ち物を見る [g]武器合成~%")
   (scr-format "どちらに移動しますか？[↑ ]上 [↓ ]下 [→ ]右 [← ]左 [q]薬を使う [r]終わる: ~%"))
 
 (defun gamen-clear ()
@@ -90,3 +109,10 @@
 (defun endo-win ()
   (charms/ll:endwin))
 
+(defun utf-8-char-bytes (byte)
+  "最初のバイトから一文字のバイト数を算出する"
+  (let ((n (- 8 (integer-length (logxor byte #xff)))))
+    (case n
+      (0 1)
+      (1 nil)
+      (otherwise n))))
